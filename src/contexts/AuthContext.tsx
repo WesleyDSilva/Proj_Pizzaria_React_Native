@@ -1,4 +1,4 @@
-import React, {useState, createContext, ReactNode} from "react";
+import React, {useState, createContext, ReactNode, useEffect} from "react";
 import { api } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -39,6 +39,29 @@ export function AuthProvider({children}: AuthProviderProps){
     const[loadingAuth, setLoadingAuth] = useState(false)
 
     const isAuthenticated = !!user.name;
+
+    useEffect(()=>{
+
+        async function  getUser() {
+            //Recebe os dados salvos do usuario
+            const userInfo = await AsyncStorage.getItem('@QuickBite');
+            let hasUser: UserProps = JSON.parse(userInfo||'{}')
+
+            //Testa se as informacoes de usuario foram recebidas
+            if(Object.keys(hasUser).length>0){
+                api.defaults.headers.common['Authorization'] = `Bearer ${hasUser.token}`
+
+                setUser({
+                    id: hasUser.id,
+                    name: hasUser.name,
+                    email: hasUser.email,
+                    token: hasUser.token
+                })
+            }
+
+        }
+        getUser();
+    },[])
 
     async function signIn({email, password}: SignInProps){
         setLoadingAuth(true);
