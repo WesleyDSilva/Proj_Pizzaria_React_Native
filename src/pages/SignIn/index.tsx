@@ -1,10 +1,11 @@
 import React, { useState, useContext } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ActivityIndicator } from "react-native";
 
-import { AuthContext } from "../../contexts/AuthContext";
+
+import { AuthContext } from '../../contexts/AuthContext';
 
 export default function SignIn(){
-    const {signIn} = useContext(AuthContext)
+    const {signIn,loadingAuth} = useContext(AuthContext)
 
     const [isFocused, setIsFocused] = useState(false);
     const [isFocusedUser, setIsFocusedUser] = useState(false);
@@ -48,7 +49,12 @@ export default function SignIn(){
                 />
 
                 <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                    <Text style={styles.buttonText}>Acessar</Text>
+                    {loadingAuth ? (
+                        <ActivityIndicator size={25} color='#FFF'/>
+                    ):(
+                        <Text style={styles.buttonText}>Acessar</Text>
+                    )}
+                    
                 </TouchableOpacity>
             </View>
         </View>
