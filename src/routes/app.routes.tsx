@@ -1,10 +1,9 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-
-
 import Dashboard from "../pages/Dashboard";
-import { Text, View } from "react-native";
+import Cadastro from "../pages/Cadastro"; // Importa corretamente a tela Cadastro
+import SignIn from "../pages/SignIn"; 
 
 const Stack = createNativeStackNavigator();
 //<Stack.Screen name="Dashboard" component={Dashboard}></Stack.Screen>
@@ -13,9 +12,10 @@ const Stack = createNativeStackNavigator();
 function AppRoutes(){
     return(
         <Stack.Navigator>
-            <Stack.Screen name="Dashboard" component={Dashboard} />
+            <Stack.Screen name="Dashboard" component={Dashboard} options={{headerShown: false}} />
         </Stack.Navigator>
     )
 }
 
 export default AppRoutes;
+
