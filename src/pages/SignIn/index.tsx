@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     },
     linkText: {
         marginTop: 20, // Adicionando margem superior para espaçamento
-        color: '#FFA831',
+        color: '#4169E1',
         textDecorationLine: 'underline',
         textAlign: 'center', // Alinhando ao centro
     },
