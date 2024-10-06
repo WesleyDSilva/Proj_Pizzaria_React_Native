@@ -23,6 +23,11 @@ export default function SignIn() {
     return (
         <View style={styles.container}>
             <Image style={styles.logo} source={require('../../assets/logo.png')} />
+            
+             {/* Texto entre o campo de email e o logo */}
+             <Text style={styles.centeredText}>
+             A felicidade começa com uma fatia: descubra o sabor que conquista a cada mordida!
+            </Text>
 
             <View style={styles.inputContainer}>
                 <TextInput
@@ -34,7 +39,7 @@ export default function SignIn() {
                     value={email}
                     onChangeText={setEmail}
                 />
-
+               
                 <TextInput
                     placeholder="Senha"
                     style={[styles.input, isFocused && styles.inputFocused]}
@@ -56,7 +61,10 @@ export default function SignIn() {
 
                 {/* Link para a página de Cadastro */}
                 <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
-                    <Text style={styles.linkText}>Não possui cadastro ainda? Clique aqui</Text>
+                    <Text style={styles.linkText}>
+                        Não possui cadastro ainda?{' '}
+                        <Text style={styles.boldText}>Cadastre-se agora!</Text>
+                        </Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -72,8 +80,8 @@ const styles = StyleSheet.create({
     },
     logo: {
         marginBottom: 18,
-        width: 258,
-        height: 255,
+        width: 350,
+        height: 260,
     },
     inputContainer: {
         width: '95%',
@@ -96,6 +104,19 @@ const styles = StyleSheet.create({
     inputFocused: {
         borderColor: '#ff0000',
     },
+    centeredText: {
+        fontFamily: 'Poppins',
+        fontSize: 20,
+        fontWeight: '400',
+        lineHeight: 19.5,
+        letterSpacing: 0.07,
+        textAlign: 'center',
+        //backgroundColor: '#F38D00', // Amarelo padrão
+        padding: 10,
+        marginVertical: 10,
+        borderRadius: 5,
+        color: '#FFA831', // Texto branco
+    },
     button: {
         width: '95%',
         height: 40,
@@ -111,8 +132,11 @@ const styles = StyleSheet.create({
     },
     linkText: {
         marginTop: 20, // Adicionando margem superior para espaçamento
-        color: '#4169E1',
+        color: '#000',
         textDecorationLine: 'underline',
         textAlign: 'center', // Alinhando ao centro
+    },
+    boldText: {
+        fontWeight: 'bold', // Negrito aplicado na parte "Cadastre-se agora!"
     },
 });

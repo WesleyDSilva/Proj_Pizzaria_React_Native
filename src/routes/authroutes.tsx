@@ -15,7 +15,7 @@ function AuthRoutes() {
                 name="Cadastro" 
                 component={Cadastro} 
                 options={{ 
-                    title: 'Cadastro', // Define o título do header
+                    title: '', // Define o título do header
                     headerShown: true, // Mostra o header para a tela Cadastro
                     headerBackTitleVisible: false, // Opcional: Remove o texto do botão de voltar (deixando apenas o ícone)
                     headerTintColor: '#FFA831', // Cor do ícone de voltar

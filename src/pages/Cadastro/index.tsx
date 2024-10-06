@@ -132,9 +132,10 @@ export default function Cadastro() {
       </TouchableOpacity>
 
       {/* Botão Voltar */}
-      <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+      {/*<TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
         <Text style={styles.buttonText}>Voltar para Login</Text>
       </TouchableOpacity>
+      */}
     </ScrollView>
   );
 }
