@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // Importação para navegação
 
 export default function Cadastro(): React.JSX.Element {
   const [isFocused, setIsFocused] = useState(false);

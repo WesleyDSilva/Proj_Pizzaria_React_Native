@@ -3,6 +3,11 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "reac
 import { useNavigation } from "@react-navigation/native"; // Importação para navegação
 import { AuthContext } from "../../contexts/AuthContext";
 
+
+
+
+
+
 export default function SignIn(): React.JSX.Element {
   const { signIn } = useContext(AuthContext);
   const navigation = useNavigation(); // Hook para navegação

@@ -11,6 +11,7 @@ function AppRoutes(){
     return(
         <Stack.Navigator>
             <Stack.Screen name="Dashboard" component={Dashboard} options={{headerShown: false}} />
+            <Stack.Screen name="Cadastro" component={Cadastro} />
         </Stack.Navigator>
     )
 }

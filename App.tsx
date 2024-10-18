@@ -1,4 +1,4 @@
-{/*import { StatusBar } from "react-native";
+import { StatusBar } from "react-native";
 import { StyleSheet, Text, View } from "react-native";
 
 import { NavigationContainer } from "@react-navigation/native";
@@ -20,10 +20,10 @@ export default function App(){
     
   );
 }
-*/}
 
+{/*
 // src/App.tsx
-{/*import React from 'react';
+import React from 'react';
 import TestePage from './src/pages/TestePage'; // Importa a nova página
 
 const App = () => {
@@ -31,7 +31,8 @@ const App = () => {
 };
 
 export default App;
-*/}
+
+{/*
 
 import React from 'react';
 import Entrada from './src/pages/Entrada'; // Importa a nova página
@@ -41,3 +42,4 @@ const App = () => {
 };
 
 export default App;
+*/}
