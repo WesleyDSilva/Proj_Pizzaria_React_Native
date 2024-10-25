@@ -71,7 +71,8 @@ export function AuthProvider({children}: AuthProviderProps){
 
         try{
             // const response = await api.post('/session', {
-            const response = await api.post('/api/login', {
+                //const response = await api.post('/api/login', {
+                const response = await api.post('/auth/v1/token?grant_type=password', {
                 email,
                 password
             })
