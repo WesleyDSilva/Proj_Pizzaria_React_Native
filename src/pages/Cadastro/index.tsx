@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
 
 export default function Cadastro(): React.JSX.Element {
   const [isFocused, setIsFocused] = useState(false);
@@ -17,7 +17,7 @@ export default function Cadastro(): React.JSX.Element {
 
   function handleCadastro() {
     if (senha !== confirmaSenha) {
-      alert('As senhas não conferem');
+      Alert.alert('As senhas não conferem');
       return;
     }
     // Lógica para realizar o cadastro
