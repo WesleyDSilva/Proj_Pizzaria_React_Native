@@ -45,7 +45,7 @@ export default function SignIn(): React.JSX.Element {
           value={password}
           onChangeText={setPassword}
         />
-
+.
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Acessar</Text>
         </TouchableOpacity>
