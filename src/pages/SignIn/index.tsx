@@ -1,102 +1,117 @@
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { View } from "react-native";
+import React, { useState, useContext } from "react";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // Importação para navegação
+import { AuthContext } from "../../contexts/AuthContext";
 
-import Icon from 'react-native-vector-icons/FontAwesome';
+export default function SignIn(): React.JSX.Element {
+  const { signIn } = useContext(AuthContext);
+  const navigation = useNavigation(); // Hook para navegação
 
-import Feed from "../Feed";
-import Carrinho from "../Carrinho";
-import Profile from "../Profile";
-import Favoritos from "../Favoritos";
+  const [isFocused, setIsFocused] = useState(false);
+  const [isFocusedUser, setIsFocusedUser] = useState(false);
 
-const Tab = createBottomTabNavigator();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-export default function TabRoutes() {
-    return (
-        <Tab.Navigator
-            screenOptions={{
-                headerShown: false,
-                tabBarActiveTintColor: '#000', // Cor do ícone ativo
-                tabBarInactiveTintColor: '#F38D00', // Cor do ícone inativo
-                tabBarStyle: {
-                    backgroundColor: '#F38D00', // Cor de fundo da barra
-                },
-            }}
-        >
-            <Tab.Screen
-                name="feed"
-                component={Feed}
-                options={{
-                    tabBarIcon: ({ color, size }) => (
-                        <View style={{
-                            backgroundColor: '#fff',
-                            borderRadius: 25,
-                            padding: 5,
-                            justifyContent: 'center',
-                            alignItems: 'center'
-                        }}> 
-                            <Icon  name="home" color={color} size={size} />
-                        </View>
-                    ),
-                    tabBarLabel: ''
-                }}
-            />
+  async function handleLogin() {
+    if (email === "" || password === "") {
+      return;
+    }
+    await signIn({ email, password });
+  }
 
-            <Tab.Screen
-                name="carrinho"
-                component={Carrinho}
-                options={{
-                  tabBarIcon: ({ color, size }) => (
-                    <View style={{
-                        backgroundColor: '#fff',
-                        borderRadius: 25,
-                        padding: 5,
-                        justifyContent: 'center',
-                        alignItems: 'center'
-                    }}> 
-                        <Icon  name="shopping-cart" color={color} size={size} />
-                    </View>
-                ),
-                tabBarLabel: ''
-              }}
-            />
+  return (
+    <View style={styles.container}>
+      <Image style={styles.logo} source={require('../../assets/logo.png')} />
 
-            <Tab.Screen
-                name="Profile"
-                component={Profile}
-                options={{
-                  tabBarIcon: ({ color, size }) => (
-                    <View style={{
-                        backgroundColor: '#fff',
-                        borderRadius: 25,
-                        padding: 5,
-                        justifyContent: 'center',
-                        alignItems: 'center'
-                    }}> 
-                        <Icon  name="user" color={color} size={size} />
-                    </View>
-                ),
-                tabBarLabel: ''
-              }}
-            />
+      <View style={styles.inputContainer}>
+        <TextInput
+          placeholder="Digite seu email"
+          style={[styles.input, isFocusedUser && styles.inputFocused]}
+          onFocus={() => setIsFocusedUser(true)}
+          onBlur={() => setIsFocusedUser(false)}
+          placeholderTextColor="#474747"
+          value={email}
+          onChangeText={setEmail}
+        />
 
-            <Tab.Screen
-                name="Favoritos"
-                component={Favoritos}
-                options={{
-                  tabBarIcon: ({ color, size }) => (
-                    <View style={{
-                        backgroundColor: '#fff',
-                        borderRadius: 25,
-                        padding: 5,
-                        justifyContent: 'center',
-                        alignItems: 'center'
-                    }}> 
-                        <Icon  name="heart" color={color} size={size} />
-                    </View>
-                ),
-                tabBarLabel: ''
-              }}
-            />
-        </Tab.Navigator>
-    );
+        <TextInput
+          placeholder="Senha"
+          style={[styles.input, isFocused && styles.inputFocused]}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholderTextColor="#474747"
+          secureTextEntry={true}
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Acessar</Text>
+        </TouchableOpacity>
+
+        {/* Adicionando o link para a página de Cadastro */}
+        <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
+          <Text style={styles.linkText}>
+            Não possui Cadastro ainda? Clique aqui!
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F4F4F4'
+  },
+  logo: {
+    marginBottom: 18,
+    width: 258,
+    height: 255,
+  },
+  inputContainer: {
+    width: '95%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 14
+  },
+  input: {
+    width: '95%',
+    height: 40,
+    backgroundColor: '#F4F4F4',
+    borderColor: '#B0B0B0',
+    borderWidth: 2,
+    marginBottom: 12,
+    borderRadius: 30,
+    paddingHorizontal: 8,
+    color: '#000'
+  },
+  inputFocused: {
+    borderColor: '#ff0000', // Cor da borda quando o campo está focado
+  },
+  button: {
+    width: '95%',
+    height: 40,
+    backgroundColor: '#FFA831',
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20 // Espaço para o link de cadastro
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  linkText: {
+    fontSize: 14,
+    color: '#007BFF', // Cor do texto do link
+    textDecorationLine: 'underline', // Sublinhado para indicar o link
+  }
+});
+
