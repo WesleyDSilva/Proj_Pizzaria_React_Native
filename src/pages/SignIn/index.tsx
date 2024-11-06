@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     paddingHorizontal: 8,
     color: '#000'
-  },
+  },y
   inputFocused: {
     borderColor: '#ff0000', // Cor da borda quando o campo está focado
   },
