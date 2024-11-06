@@ -72,7 +72,7 @@ export default function SignIn(): React.JSX.Element {
     </View>
   );
 }
-
+.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
