@@ -1,10 +1,17 @@
 import React, { useState, useContext } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
+import { View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator 
+} from "react-native";
 import { useNavigation } from "@react-navigation/native"; // Importação para navegação
 import { AuthContext } from "../../contexts/AuthContext";
 
 export default function SignIn(): React.JSX.Element {
-  const { signIn } = useContext(AuthContext);
+  const { signIn, loadingAuth } = useContext(AuthContext);
   const navigation = useNavigation(); // Hook para navegação
 
   const [isFocused, setIsFocused] = useState(false);
@@ -47,7 +54,12 @@ export default function SignIn(): React.JSX.Element {
         />
 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Acessar</Text>
+          {loadingAuth ? (
+            <ActivityIndicator size={25} color="#fff"/>
+          ) : (
+            <Text style={styles.buttonText}>Acessar</Text>
+          )}
+          
         </TouchableOpacity>
 
         {/* Adicionando o link para a página de Cadastro */}
