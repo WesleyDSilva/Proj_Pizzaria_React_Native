@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // Importação para navegação
 
 export default function Cadastro(): React.JSX.Element {
   const [isFocused, setIsFocused] = useState(false);
@@ -15,6 +16,8 @@ export default function Cadastro(): React.JSX.Element {
   const [senha, setSenha] = useState('');
   const [confirmaSenha, setConfirmaSenha] = useState('');
 
+  const navigation = useNavigation(); // Hook para navegação
+
   function handleCadastro() {
     if (senha !== confirmaSenha) {
       Alert.alert('As senhas não conferem');
@@ -25,6 +28,13 @@ export default function Cadastro(): React.JSX.Element {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+         {/* Botão de voltar */}
+         <TouchableOpacity 
+         style={styles.backButton} 
+         onPress={() => navigation.goBack()} // Volta para a tela anterior
+       >
+         <Text style={styles.backButtonText}>Voltar</Text>
+      </TouchableOpacity>
       <TextInput
         placeholder="Nome Completo"
         style={[styles.input, isFocused && styles.inputFocused]}

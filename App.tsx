@@ -21,3 +21,15 @@ export default function App(){
   );
 }
 
+
+/*
+import React from 'react';
+import Entrada from './src/pages/Cadastro'; // Importa a nova página
+
+const App = () => {
+  return <Entrada />;  // Renderiza a página de teste diretamente
+};
+
+export default App;
+*/
+
