@@ -41,7 +41,7 @@ export default function SignIn(): React.JSX.Element {
           value={email}
           onChangeText={setEmail}
         />
-
+.
         <TextInput
           placeholder="Senha"
           style={[styles.input, isFocused && styles.inputFocused]}
