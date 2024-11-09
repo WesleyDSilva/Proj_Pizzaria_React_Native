@@ -1,64 +1,105 @@
-import React, {useContext, useState} from "react";
-import {View, Text, Button, SafeAreaView,TouchableOpacity, TextInput, StyleSheet} from 'react-native'
-import { AuthContext } from "../../contexts/AuthContext";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { View } from "react-native";
+import Icon from 'react-native-vector-icons/Feather';
 
-export default function Dashboard(): React.JSX.Element{
-    const {signOut} = useContext(AuthContext);
-    return(
-        <SafeAreaView style= {styles.container}>
-            <Text style={styles.title}>Novo Pedido</Text>
+import Feed from "../Feed";
+import Carrinho from "../Carrinho";
+import Profile from "../Profile";
+import Favoritos from "../Favoritos";
 
-            <TextInput placeholder="Número da Mesa" placeholderTextColor="#FFF" style={styles.input}
-                keyboardType="numeric"
+const Tab = createBottomTabNavigator();
+
+export default function TabRoutes() {
+    return (
+        <Tab.Navigator
+            screenOptions={{
+                headerShown: false,
+                tabBarActiveTintColor: '#000', // Cor do ícone ativo
+                tabBarInactiveTintColor: '#F38D00', // Cor do ícone inativo
+                tabBarStyle: {
+                    backgroundColor: '#F38D00', // Cor de fundo da barra
+                },
+            }}
+        >
+            <Tab.Screen
+                name="feed"
+                component={Feed}
+                options={{
+                    tabBarIcon: ({ color, size }) => (
+                        <View style={{
+                            backgroundColor: '#fff',
+                            borderRadius: 25,
+                            padding: 5,
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}> 
+                            <Icon name="home" color={color} size={size} />
+                        </View>
+                    ),
+                    tabBarLabel: 'k'
+                }}
             />
-            <TouchableOpacity style={styles.button}>
-                <Text style={styles.buttonText}>Abrir mesa</Text>
 
-            </TouchableOpacity>
-               
-        </SafeAreaView>
-    )
+            <Tab.Screen
+                name="carrinho"
+                component={Carrinho}
+                options={{
+                    
+                    tabBarIcon: ({ color, size }) => (
+                        <View style={{
+                            backgroundColor: '#fff',
+                            borderRadius: 25,
+                            padding: 5,
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}> 
+                            <Icon name="shopping-cart" color={color} size={size} />
+                        </View>
+                    ),
+                    tabBarLabel: ''
+                }}
+                
+            />
+
+            <Tab.Screen
+                name="user"
+                component={Profile}
+                options={{
+            
+                  tabBarIcon: ({ color, size }) => (
+                        <View style={{
+                            backgroundColor: '#fff',
+                            borderRadius: 25,
+                            padding: 5,
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}> 
+                            <Icon name="user" color={color} size={size} />
+                        </View>
+                    ),
+                    tabBarLabel: ''
+                }}
+            />
+
+            <Tab.Screen
+                name="new"
+                component={Favoritos}
+                options={{                   
+
+                tabBarIcon: ({ color, size }) => (
+                    <View style={{
+                        backgroundColor: '#fff',
+                        borderRadius: 25,
+                        padding: 5,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}> 
+                        <Icon name="heart" color={color} size={size} />
+                    </View>
+                ),
+                tabBarLabel: ''
+            }}
+            />
+        </Tab.Navigator>
+    );
 }
-
-const styles = StyleSheet.create({
-    container:{
-        flex:1,
-        justifyContent: 'center',
-        alignItems:'center',
-        paddingVertical:15,
-        backgroundColor: '#F4F4F4',
-    },
-    title:{
-        fontSize: 30,
-        fontWeight: 'bold',
-        color: '#000',
-        marginBottom: 24,
-    },
-    input:{
-        width:'90%',
-        height:60,
-        backgroundColor: '#fff',
-        borderRadius: 4,
-        paddingHorizontal:8,
-        textAlign: 'center',
-        fontSize: 22,
-        color: '#000'
-    },
-    button:{
-        width: '90%',
-        height: 40,
-        backgroundColor: '#FFA831',
-        borderRadius: 4,
-        marginVertical: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-
-    },
-    buttonText:{
-        fontSize: 18,
-        color: '#fff',
-        fontWeight: 'bold'
-
-    }
-
-})
