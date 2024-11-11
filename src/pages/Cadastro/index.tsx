@@ -78,7 +78,6 @@ export default function Cadastro(): React.JSX.Element {
   }
 
 
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Campos de entrada para dados do formulário */}

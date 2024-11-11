@@ -5,8 +5,8 @@ const api = axios.create({
 })
 
 export {api};
-*/
 
+/*
 import axios from 'axios';
 
 // URL do Supabase
@@ -23,6 +23,12 @@ const api = axios.create({
     }
 });
 
+export { api };*/
 
+import axios from "axios";
 
-export { api };
+const api = axios.create({
+    baseURL:'https://devweb3.ok.etc.br'
+})
+
+export {api};

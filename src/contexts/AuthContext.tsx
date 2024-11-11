@@ -1,134 +1,145 @@
-import React, {useState, createContext, ReactNode, useEffect} from "react";
+import React, { useState, createContext, ReactNode, useEffect } from "react";
 import { api } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type AuthContextData = {
     user: UserProps;
-    isAuthenticated:boolean;
+    isAuthenticated: boolean;
     signIn: (credentials: SignInProps) => Promise<void>;
     loadingAuth: boolean;
     loading: boolean;
-    signOut: ()=>Promise<void>
-}
+    signOut: () => Promise<void>;
+};
 
 type UserProps = {
-    id:string;
-    name:string;
+    id: string;
+    name: string;
     email: string;
-    token: string;
-}
-
+};
 
 type AuthProviderProps = {
     children: ReactNode;
-}
+};
 
 type SignInProps = {
     email: string;
     password: string;
-}
+};
+
+// Tipo da resposta da API
+type SignInResponse = {
+    success: boolean;
+    message: string;
+    user?: UserProps; // 'user' é opcional
+};
 
 export const AuthContext = createContext({} as AuthContextData);
 
-export function AuthProvider({children}: AuthProviderProps){
+export function AuthProvider({ children }: AuthProviderProps) {
+    const [user, setUser] = useState<UserProps>({
+        id: '',
+        name: '',
+        email: '',
+    });
 
-    const[user, setUser] = useState<UserProps>({
-        id:'',
-        name:'',
-        email:'',
-        token:''
-    })
-
-    const[loadingAuth, setLoadingAuth] = useState(false)
-    const[loading, setLoading] = useState(true)
+    const [loadingAuth, setLoadingAuth] = useState(false);
+    const [loading, setLoading] = useState(true);
     const isAuthenticated = !!user.name;
 
-    useEffect(()=>{
-
-        async function  getUser() {
-            //Recebe os dados salvos do usuario
+    useEffect(() => {
+        async function getUser() {
             const userInfo = await AsyncStorage.getItem('@QuickBite');
-            let hasUser: UserProps = JSON.parse(userInfo||'{}')
+            let hasUser: UserProps = JSON.parse(userInfo || '{}');
 
-            //Testa se as informacoes de usuario foram recebidas
-            if(Object.keys(hasUser).length>0){
-                api.defaults.headers.common['Authorization'] = `Bearer ${hasUser.token}`
-
+            if (Object.keys(hasUser).length > 0) {
                 setUser({
                     id: hasUser.id,
                     name: hasUser.name,
                     email: hasUser.email,
-                    token: hasUser.token
-                })
+                });
             }
             setLoading(false);
         }
         getUser();
-    },[])
+    }, []);
 
-    async function signIn({email, password}: SignInProps){
+    async function signIn({ email, password }: SignInProps) {
         setLoadingAuth(true);
-
-        try{
-            // const response = await api.post('/session', {
-                //const response = await api.post('/api/login', {
-                const response = await api.post('/auth/v1/token?grant_type=password', {
+    
+        try {
+            // Logando os dados enviados
+            console.log('Dados enviados para autenticação:', { email, password });
+    
+            // Envia a requisição de login
+            const response = await api.post('/api/api_auth.php', {
                 email,
-                password
-            })
-
-            console.log(response.data);
-            const {id, name, token} = response.data;
-
-
-            const data = {
-                ...response.data
-            };
-
-            await AsyncStorage.setItem('@QuickBite', JSON.stringify(data))
-
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-
-            setUser({
-                id:'',
-                name: 'Wesley Silva',
-                email,
-               token, 
-            })
-
-            setLoadingAuth(false);
-
-        }catch(err){
-            console.log('Erro ao acessar!', err)
+                senha: password,
+            });
+    
+            // Corrigido: Acessar `response.data`
+            const responseData = response.data;
+    
+            // Logando a resposta da API
+            console.log('Resposta da API:', responseData);
+    
+            // Verifica se a resposta é bem-sucedida
+            if (responseData.success) {
+                if (responseData.user) {
+                    const { id, name, email: responseEmail } = responseData.user;
+    
+                    const data = {
+                        id,
+                        name,
+                        email: responseEmail,
+                    };
+    
+                    await AsyncStorage.setItem('@QuickBite', JSON.stringify(data));
+    
+                    setUser({
+                        id,
+                        name,
+                        email: responseEmail,
+                    });
+    
+                    console.log('Autenticação bem-sucedida:', responseData.message);
+                } else {
+                    console.log('Erro: Usuário não encontrado na resposta.');
+                }
+            } else {
+                // Se a resposta não foi bem-sucedida
+                console.log('Erro ao acessar! Resposta da API:', responseData.message);
+            }
+        } catch (err) {
+            // Em caso de erro, exibe a mensagem de erro
+            console.log('Erro ao acessar!', err);
+        } finally {
             setLoadingAuth(false);
         }
     }
+    
 
     async function signOut() {
-        await AsyncStorage.clear()
-        .then(()=>{
+        await AsyncStorage.clear().then(() => {
             setUser({
                 id: '',
                 name: '',
                 email: '',
-                token: ''
-            })
-        })       
-        
+            });
+        });
     }
 
-    return(
-        <AuthContext.Provider 
-        value={{
-            user, 
-            isAuthenticated, 
-            signIn,
-            loading, 
-            loadingAuth,
-            signOut
-         }}
+    return (
+        <AuthContext.Provider
+            value={{
+                user,
+                isAuthenticated,
+                signIn,
+                loading,
+                loadingAuth,
+                signOut,
+            }}
         >
             {children}
         </AuthContext.Provider>
-    )
-};
+    );
+}

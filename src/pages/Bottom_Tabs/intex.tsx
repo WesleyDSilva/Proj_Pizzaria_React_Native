@@ -9,7 +9,7 @@ import Favoritos from "../Favoritos";
 
 const Tab = createBottomTabNavigator();
 
-export default function TabRoutes() {
+export default function Bottom_Tabs(): React.JSX.Element {
     return (
         <Tab.Navigator
             screenOptions={{

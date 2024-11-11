@@ -1,21 +1,41 @@
 import React, {useContext, useState} from "react";
-import {View, Text, Button, SafeAreaView,TouchableOpacity, TextInput, StyleSheet} from 'react-native'
+import {View, Text, Button, SafeAreaView,TouchableOpacity, TextInput, StyleSheet, } from 'react-native'
 import { AuthContext } from "../../contexts/AuthContext";
 
-export default function Dashboard(): React.JSX.Element{
+import { useNavigation } from "@react-navigation/native"; 
+
+
+export default function Dashboard(){
+    const navigation = useNavigation();
+
+    const[number, setNumber] = useState('');
+
+    async function openOrder() {
+        if(number===''){
+            return;
+        }
+
+        //Requisição e navegar pata próxima tela
+        //navigation.navigate()
+    }
+
     const {signOut} = useContext(AuthContext);
     return(
         <SafeAreaView style= {styles.container}>
             <Text style={styles.title}>Novo Pedido</Text>
 
-            <TextInput placeholder="Número da Mesa" placeholderTextColor="#FFF" style={styles.input}
+            <TextInput placeholder="Número da Mesa" 
+                placeholderTextColor="#FFF" 
+                style={styles.input}
                 keyboardType="numeric"
+                value={number}
+                onChangeText={setNumber}
             />
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={openOrder}>
                 <Text style={styles.buttonText}>Abrir mesa</Text>
 
             </TouchableOpacity>
-               
+            <Button title="Logout" onPress={signOut} />
         </SafeAreaView>
     )
 }
