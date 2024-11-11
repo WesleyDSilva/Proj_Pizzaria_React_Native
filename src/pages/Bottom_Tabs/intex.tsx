@@ -14,7 +14,7 @@ export default function TabRoutes() {
         <Tab.Navigator
             screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: '#fff', // Cor do ícone ativo
+                tabBarActiveTintColor: '#000', // Cor do ícone ativo
                 tabBarInactiveTintColor: '#F38D00', // Cor do ícone inativo
                 tabBarStyle: {
                     backgroundColor: '#F38D00', // Cor de fundo da barra
@@ -36,7 +36,7 @@ export default function TabRoutes() {
                             <Icon name="home" color={color} size={size} />
                         </View>
                     ),
-                    tabBarLabel: 'Início'
+                    tabBarLabel: 'k'
                 }}
             />
 
@@ -44,27 +44,61 @@ export default function TabRoutes() {
                 name="carrinho"
                 component={Carrinho}
                 options={{
-                    tabBarIcon: ({ color, size }) => <Icon name="shopping-cart" color={color} size={size} />,
-                    tabBarLabel: 'Carrinho'
+                    
+                    tabBarIcon: ({ color, size }) => (
+                        <View style={{
+                            backgroundColor: '#fff',
+                            borderRadius: 25,
+                            padding: 5,
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}> 
+                            <Icon name="shopping-cart" color={color} size={size} />
+                        </View>
+                    ),
+                    tabBarLabel: ''
                 }}
+                
             />
 
             <Tab.Screen
                 name="user"
                 component={Profile}
                 options={{
-                    tabBarIcon: ({ color, size }) => <Icon name="user" color={color} size={size} />,
-                    tabBarLabel: 'Usuário'
+            
+                  tabBarIcon: ({ color, size }) => (
+                        <View style={{
+                            backgroundColor: '#fff',
+                            borderRadius: 25,
+                            padding: 5,
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}> 
+                            <Icon name="user" color={color} size={size} />
+                        </View>
+                    ),
+                    tabBarLabel: ''
                 }}
             />
 
             <Tab.Screen
                 name="new"
                 component={Favoritos}
-                options={{
-                    tabBarIcon: ({ color, size }) => <Icon name="heart" color={color} size={size} />,
-                    tabBarLabel: 'Novo'
-                }}
+                options={{                   
+
+                tabBarIcon: ({ color, size }) => (
+                    <View style={{
+                        backgroundColor: '#fff',
+                        borderRadius: 25,
+                        padding: 5,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}> 
+                        <Icon name="heart" color={color} size={size} />
+                    </View>
+                ),
+                tabBarLabel: ''
+            }}
             />
         </Tab.Navigator>
     );
