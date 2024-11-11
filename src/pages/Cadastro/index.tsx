@@ -23,6 +23,37 @@ export default function Cadastro(): React.JSX.Element {
     // Lógica para realizar o cadastro
   }
 
+  const userData = {
+    nome,
+    email,
+    telefone,
+    cep,
+    logradouro,
+    numero_casa: numero,
+    complemento,
+    senha,
+  };
+
+  fetch('https://devweb3.ok.etc.br/api/api_create.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(userData),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.message === "Usuário adicionado com sucesso.") {
+        Alert.alert("Sucesso", data.message);
+      } else {
+        Alert.alert("Erro", data.message);
+      }
+    })
+    .catch((error) => {
+      console.error("Erro:", error);
+      Alert.alert("Erro", "Não foi possível realizar o cadastro.");
+    });
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TextInput

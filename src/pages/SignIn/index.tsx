@@ -1,96 +1,172 @@
-import React, { useState, useContext } from "react";
-import { View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  Image, 
-  ActivityIndicator 
-} from "react-native";
-import { useNavigation } from "@react-navigation/native"; // Importação para navegação
-import { AuthContext } from "../../contexts/AuthContext";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
 
-export default function SignIn(): React.JSX.Element {
-  const { signIn, loadingAuth } = useContext(AuthContext);
-  const navigation = useNavigation(); // Hook para navegação
-
+export default function Cadastro(): React.JSX.Element {
   const [isFocused, setIsFocused] = useState(false);
   const [isFocusedUser, setIsFocusedUser] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [cep, setCep] = useState('');
+  const [logradouro, setLogradouro] = useState('');
+  const [numero, setNumero] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmaSenha, setConfirmaSenha] = useState('');
 
-  async function handleLogin() {
-    if (email === "" || password === "") {
+  function handleCadastro() {
+    if (senha !== confirmaSenha) {
+      Alert.alert('As senhas não conferem');
       return;
     }
-    await signIn({ email, password });
+    // Lógica para realizar o cadastro
   }
 
+  const userData = {
+    nome,
+    email,
+    telefone,
+    cep,
+    logradouro,
+    numero_casa: numero,
+    complemento,
+    senha,
+  };
+
+  fetch('https://devweb3.ok.etc.br/api/api_create.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(userData),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.message === "Usuário adicionado com sucesso.") {
+        Alert.alert("Sucesso", data.message);
+      } else {
+        //Alert.alert("Erro1 ", data.message);
+      }
+    })
+    .catch((error) => {
+      console.error("Erro:", error);
+      Alert.alert("Erro", "Não foi possível realizar o cadastro.");
+    });
+
   return (
-    <View style={styles.container}>
-      <Image style={styles.logo} source={require('../../assets/logo.png')} />
+    <ScrollView contentContainerStyle={styles.container}>
+      <TextInput
+        placeholder="Nome Completo"
+        style={[styles.input, isFocused && styles.inputFocused]}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholderTextColor="#474747"
+        value={nome}
+        onChangeText={setNome}
+      />
+      
+      <TextInput
+        placeholder="E-mail"
+        style={[styles.input, isFocused && styles.inputFocused]}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholderTextColor="#474747"
+        value={email}
+        onChangeText={setEmail}
+      />
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          placeholder="Digite seu email"
-          style={[styles.input, isFocusedUser && styles.inputFocused]}
-          onFocus={() => setIsFocusedUser(true)}
-          onBlur={() => setIsFocusedUser(false)}
-          placeholderTextColor="#474747"
-          value={email}
-          onChangeText={setEmail}
-        />
+      <TextInput
+        placeholder="Telefone Celular"
+        style={[styles.input, isFocused && styles.inputFocused]}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholderTextColor="#474747"
+        value={telefone}
+        onChangeText={setTelefone}
+        keyboardType="phone-pad"
+      />
 
+      <TextInput
+        placeholder="CEP"
+        style={[styles.input, isFocused && styles.inputFocused]}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholderTextColor="#474747"
+        value={cep}
+        onChangeText={setCep}
+        keyboardType="numeric"
+      />
+
+      <TextInput
+        placeholder="Logradouro"
+        style={[styles.input, isFocused && styles.inputFocused]}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholderTextColor="#474747"
+        value={logradouro}
+        onChangeText={setLogradouro}
+      />
+
+      <View style={styles.row}>
         <TextInput
-          placeholder="Senha"
-          style={[styles.input, isFocused && styles.inputFocused]}
+          placeholder="Número"
+          style={[styles.inputHalf, isFocused && styles.inputFocused]}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholderTextColor="#474747"
-          secureTextEntry={true}
-          value={password}
-          onChangeText={setPassword}
+          value={numero}
+          onChangeText={setNumero}
+          keyboardType="numeric"
         />
-
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          {loadingAuth ? (
-            <ActivityIndicator size={25} color="#fff"/>
-          ) : (
-            <Text style={styles.buttonText}>Acessar</Text>
-          )}
-          
-        </TouchableOpacity>
-
-        {/* Adicionando o link para a página de Cadastro */}
-        <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
-          <Text style={styles.linkText}>
-            Não possui Cadastro ainda? Clique aqui!
-          </Text>
-        </TouchableOpacity>
+        
+        <TextInput
+          placeholder="Complemento"
+          style={[styles.inputHalf, isFocused && styles.inputFocused]}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholderTextColor="#474747"
+          value={complemento}
+          onChangeText={setComplemento}
+        />
       </View>
-    </View>
+
+      <TextInput
+        placeholder="Senha"
+        style={[styles.input, isFocused && styles.inputFocused]}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholderTextColor="#474747"
+        secureTextEntry={true}
+        value={senha}
+        onChangeText={setSenha}
+      />
+
+      <TextInput
+        placeholder="Confirme Senha"
+        style={[styles.input, isFocused && styles.inputFocused]}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholderTextColor="#474747"
+        secureTextEntry={true}
+        value={confirmaSenha}
+        onChangeText={setConfirmaSenha}
+      />
+
+      <TouchableOpacity style={styles.button} onPress={handleCadastro}>
+        <Text style={styles.buttonText}>Cadastrar</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F4F4F4'
-  },
-  logo: {
-    marginBottom: 18,
-    width: 258,
-    height: 255,
-  },
-  inputContainer: {
-    width: '95%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 14
+    backgroundColor: '#F4F4F4',
+    paddingVertical: 20,
   },
   input: {
     width: '95%',
@@ -101,10 +177,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 30,
     paddingHorizontal: 8,
-    color: '#000'
+    color: '#000',
   },
   inputFocused: {
     borderColor: '#ff0000', // Cor da borda quando o campo está focado
+  },
+  inputHalf: {
+    width: '47%',
+    height: 40,
+    backgroundColor: '#F4F4F4',
+    borderColor: '#B0B0B0',
+    borderWidth: 2,
+    marginBottom: 12,
+    borderRadius: 30,
+    paddingHorizontal: 8,
+    color: '#000',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '95%',
   },
   button: {
     width: '95%',
@@ -113,17 +205,11 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20 // Espaço para o link de cadastro
+    marginTop: 20,
   },
   buttonText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
   },
-  linkText: {
-    fontSize: 14,
-    color: '#007BFF', // Cor do texto do link
-    textDecorationLine: 'underline', // Sublinhado para indicar o link
-  }
 });
-
