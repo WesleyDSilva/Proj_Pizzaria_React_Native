@@ -13,7 +13,7 @@ type AuthContextData = {
 
 type UserProps = {
     id: string;
-    name: string;
+    nome: string;
     email: string;
 };
 
@@ -38,13 +38,13 @@ export const AuthContext = createContext({} as AuthContextData);
 export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<UserProps>({
         id: '',
-        name: '',
+        nome: '',
         email: '',
     });
 
     const [loadingAuth, setLoadingAuth] = useState(false);
     const [loading, setLoading] = useState(true);
-    const isAuthenticated = !!user.name;
+    const isAuthenticated = !!user.nome;
 
     useEffect(() => {
         async function getUser() {
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (Object.keys(hasUser).length > 0) {
                 setUser({
                     id: hasUser.id,
-                    name: hasUser.name,
+                    nome: hasUser.nome,
                     email: hasUser.email,
                 });
             }
@@ -85,11 +85,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Verifica se a resposta é bem-sucedida
             if (responseData.success) {
                 if (responseData.user) {
-                    const { id, name, email: responseEmail } = responseData.user;
+                    const { id, nome, email: responseEmail } = responseData.user;
     
                     const data = {
                         id,
-                        name,
+                        nome,
                         email: responseEmail,
                     };
     
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
                     setUser({
                         id,
-                        name,
+                        nome,
                         email: responseEmail,
                     });
     
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await AsyncStorage.clear().then(() => {
             setUser({
                 id: '',
-                name: '',
+                nome: '',
                 email: '',
             });
         });
