@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { api_CEP } from "../../services/api_CEP";
 import { buscaEndereco } from "../../services/enderecoService";
+import { cadastrarUsuario } from "../../services/api_cadastro";
 
 
 export default function Cadastro(): React.JSX.Element {
@@ -37,50 +38,44 @@ export default function Cadastro(): React.JSX.Element {
     if (senha !== confirmaSenha) {
       Alert.alert('As senhas não conferem');
       return;
-    }
-  
-    try {
-      const response = await fetch('https://jzlpwyuqtdfsdbiufigl.supabase.co/rest/v1/Cliente', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6bHB3eXVxdGRmc2RiaXVmaWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkyMTUzODQsImV4cCI6MjA0NDc5MTM4NH0.73UgUM8eFeZ3W5iGP2X3jzvc4I0r-CIK3i61e70BKoE',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6bHB3eXVxdGRmc2RiaXVmaWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkyMTUzODQsImV4cCI6MjA0NDc5MTM4NH0.73UgUM8eFeZ3W5iGP2X3jzvc4I0r-CIK3i61e70BKoE',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          nome,
-          telefone,
-          email,
-          senha,
-          complemento,      
-          cep,
-          cidade,
-          estado,
-          logradouro,
-          numero,
-          
-          
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Erro ao enviar dados ao Supabase');
-      }
-      
-      const result = await response.json();
-      Alert.alert('Sucesso', 'Dados enviados com sucesso!');
-      console.log('Resposta:', result);
-    } catch (error:any) {
-      Alert.alert('Erro', 'Erro ao cadastrar: ' + error.message);
-      console.error(error);
-    }
-  }
+    } 
 
+      const data = {
+        nome,
+        logradouro,
+        cidade,
+        UF: estado,
+        cep,
+        complemento,
+        numero_casa: numero,
+        email,
+        telefone,
+        senha,
+      };
+
+      try {
+        await cadastrarUsuario(data);
+        Alert.alert("Sucesso", "Usuário cadastrado com sucesso!");
+        // Resetar os campos do formulário, se necessário
+        setNome('');
+        setEmail('');
+        setTelefone('');
+        setCep('');
+        setEstado('');
+        setCidade('');
+        setLogradouro('');
+        setNumero('');
+        setComplemento('');
+        setSenha('');
+        setConfirmaSenha('');
+      } catch (error: any) {
+        Alert.alert("Erro", error.message);
+      }
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Campos de entrada para dados do formulário */}
+      
       <TextInput
         placeholder="Nome Completo"
         style={[styles.input, focusedField === 'nome' && styles.inputFocused]}
