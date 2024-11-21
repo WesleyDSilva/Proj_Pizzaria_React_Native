@@ -1,24 +1,22 @@
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 
-import { StyleSheet, Text, View } from 'react-native';
+import UserProfileForm from './UserProfileForm';
 
-export default function Profile() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Usuario</Text>
-      
-    </View>
-  );
-}
+const Profile = (): React.JSX.Element => {
+    return (
+        <View style={styles.container}>
+            <UserProfileForm />
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title:{
-    fontSize:22,
-    fontWeight:'bold'
-  }
+    container: {
+        flex: 1,
+        padding: 10,
+        backgroundColor: '#fff', // Cor de fundo para a página
+    },
 });
+
+export default Profile;
