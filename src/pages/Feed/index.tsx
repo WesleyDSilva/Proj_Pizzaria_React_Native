@@ -1,10 +1,11 @@
 
 import { StyleSheet, Text, View } from 'react-native';
+import Feed_Pizza from './Feed_Pizza';
 
-export default function Feed() {
+const Feed =  (): React.JSX.Element =>{
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Feed</Text>
+      <Feed_Pizza/>
       
     </View>
   );
@@ -22,3 +23,5 @@ const styles = StyleSheet.create({
     fontWeight:'bold'
   }
 });
+
+export default Feed;
