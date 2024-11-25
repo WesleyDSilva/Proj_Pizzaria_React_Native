@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { useNavigation } from "@react-navigation/native"; // Importação do hook de navegação
+
 import { api_CEP } from "../../services/api_CEP";
 import { buscaEndereco } from "../../services/enderecoService";
 import { cadastrarUsuario } from "../../services/api_cadastro";
 
 
 export default function Cadastro(): React.JSX.Element {
+  const navigation = useNavigation(); // Uso do hook de navegação
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const [nome, setNome] = useState('');
@@ -75,6 +78,12 @@ export default function Cadastro(): React.JSX.Element {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+     {/* Botão no topo para voltar */}
+     <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backText}>{"<"}</Text>
+      </TouchableOpacity>
+    
+          <Text style={styles.title}>Cadastro</Text>
       
       <TextInput
         placeholder="Nome Completo"
@@ -197,6 +206,7 @@ export default function Cadastro(): React.JSX.Element {
       <TouchableOpacity style={styles.button} onPress={handleCadastro}>
         <Text style={styles.buttonText}>Cadastrar</Text>
       </TouchableOpacity>
+      
     </ScrollView>
   );
 }
@@ -208,6 +218,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F4F4F4',
     paddingVertical: 20,
+  },
+  backButton: {
+    position: "absolute",
+    top: 20,
+    left: 10,
+    zIndex: 1,
+  },
+  backText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    marginTop: 50,
   },
   input: {
     width: '95%',
