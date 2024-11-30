@@ -1,197 +1,215 @@
-import React, { useState, useEffect } from 'react';
-import { View, TextInput, Text, Button, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import { View, TextInput, Text, Button, StyleSheet, Alert, ScrollView } from 'react-native';
 import axios from 'axios';
+import { AuthContext } from '../../contexts/AuthContext';
 
 const UserProfileForm = () => {
-  // Estados para armazenar os dados do formulário
-  const [id, setId] = useState(''); // ID oculto
-  const [nome, setNome] = useState('');
-  const [logradouro, setLogradouro] = useState('');
-  const [cidade, setCidade] = useState('');
-  const [uf, setUf] = useState('');
-  const [cep, setCep] = useState('');
-  const [complemento, setComplemento] = useState('');
-  const [numeroCasa, setNumeroCasa] = useState('');
-  const [email, setEmail] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [senha, setSenha] = useState(''); // Nova senha
-  const [confirmarSenha, setConfirmarSenha] = useState(''); // Confirmação da senha
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+    const { user } = useContext(AuthContext);
+    const [nome, setNome] = useState('');
+    const [logradouro, setLogradouro] = useState('');
+    const [cidade, setCidade] = useState('');
+    const [uf, setUf] = useState('');
+    const [cep, setCep] = useState('');
+    const [complemento, setComplemento] = useState('');
+    const [numeroCasa, setNumeroCasa] = useState('');
+    const [email, setEmail] = useState('');
+    const [telefone, setTelefone] = useState('');
+    const [senha, setSenha] = useState('');
+    const [confirmarSenha, setConfirmarSenha] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-  // Função para buscar os dados do usuário via GET
-  useEffect(() => {
-    axios.get('https://devweb3.ok.etc.br/api/api_get_user.php') // Substitua pela URL da sua API
-      .then(response => {
-        const usuario = response.data[0]; // Supondo que a API retorna um array com um objeto
-        if (usuario) {
-          setId(usuario.id); // Armazena o ID sem exibir no formulário
-          setNome(usuario.nome);
-          setLogradouro(usuario.logradouro);
-          setCidade(usuario.cidade);
-          setUf(usuario.UF);
-          setCep(usuario.cep);
-          setComplemento(usuario.complemento);
-          setNumeroCasa(usuario.numero_casa);
-          setEmail(usuario.email);
-          setTelefone(usuario.telefone);
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (!user.id) {
+                setError('Usuário não autenticado.');
+                setLoading(false);
+                return;
+            }
+
+            try {
+                console.log('User:', user);
+                console.log('User ID:', user.id);
+
+                const response = await axios.get(`https://devweb3.ok.etc.br/api/api_get_user.php?id=${user.id}`);
+                const usuario = response.data; // Aqui, response.data é um objeto, não um array
+
+                if (usuario && usuario.id) {
+                    // Se o usuário for encontrado, preenche os campos
+                    setNome(usuario.nome);
+                    setLogradouro(usuario.logradouro);
+                    setCidade(usuario.cidade);
+                    setUf(usuario.UF);
+                    setCep(usuario.cep);
+                    setComplemento(usuario.complemento);
+                    setNumeroCasa(usuario.numero_casa);
+                    setEmail(usuario.email);
+                    setTelefone(usuario.telefone);
+                } else {
+                    setError('Usuário não encontrado.');
+                }
+            } catch (err) {
+                setError('Erro ao carregar os dados do usuário. Tente novamente mais tarde.');
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, [user.id]); // Aqui, a dependência é o user.id
+
+    const handleSave = async () => {
+        if (senha && senha !== confirmarSenha) {
+            Alert.alert('Erro', 'As senhas não correspondem.');
+            return;
         }
-        setLoading(false);
-      })
-      .catch(err => {
-        setError('Erro ao carregar os dados');
-        setLoading(false);
-      });
-  }, []);
 
-  // Função para salvar os dados atualizados
-  const handleSave = () => {
-    if (senha && senha !== confirmarSenha) {
-      Alert.alert('Erro', 'As senhas não correspondem.');
-      return;
-    }
+        const dadosAtualizados = {
+            id: user.id,
+            nome,
+            logradouro,
+            cidade,
+            uf,
+            cep,
+            complemento,
+            numero_casa: numeroCasa,
+            email,
+            telefone,
+            senha: senha || undefined,
+        };
 
-    const dadosAtualizados = {
-      id, // Inclui o ID na requisição
-      nome,
-      logradouro,
-      cidade,
-      uf,
-      cep,
-      complemento,
-      numeroCasa,
-      email,
-      telefone,
-      senha: senha || undefined, // Envia a senha apenas se preenchida
+        try {
+            await axios.post('https://devweb3.ok.etc.br/api/api_update_user.php', dadosAtualizados);
+            Alert.alert('Sucesso', 'Dados atualizados com sucesso.');
+        } catch (err) {
+            Alert.alert('Erro', 'Erro ao atualizar os dados. Tente novamente mais tarde.');
+            console.error(err);
+        }
     };
 
-    axios.post('https://devweb3.ok.etc.br/api/api_update_user.php', dadosAtualizados)
-      .then(response => {
-        Alert.alert('Sucesso', 'Dados atualizados com sucesso.');
-      })
-      .catch(err => {
-        Alert.alert('Erro', 'Erro ao atualizar os dados.');
-        console.error(err);
-      });
-  };
+    if (loading) return <Text>Carregando...</Text>;
+    if (error) return <Text style={{ color: 'red' }}>{error}</Text>;
 
-  if (loading) {
-    return <Text>Carregando...</Text>;
-  }
+    const { signOut } = useContext(AuthContext);
+    return (
+        <ScrollView style={styles.container}>
+            <Text style={styles.title}>Perfil do Usuário</Text>
 
-  if (error) {
-    return <Text>{error}</Text>;
-  }
+            <Text>Nome:</Text>
+            <TextInput
+                style={styles.input}
+                value={nome}
+                onChangeText={setNome}
+                placeholder="Digite seu nome"
+            />
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Formulário de Usuário</Text>
+            <Text>Logradouro:</Text>
+            <TextInput
+                style={styles.input}
+                value={logradouro}
+                onChangeText={setLogradouro}
+                placeholder="Digite seu logradouro"
+            />
 
-      <Text>Nome:</Text>
-      <TextInput
-        style={styles.input}
-        value={nome}
-        onChangeText={setNome}
-      />
+            <Text>Cidade:</Text>
+            <TextInput
+                style={styles.input}
+                value={cidade}
+                onChangeText={setCidade}
+                placeholder="Digite sua cidade"
+            />
 
-      <Text>Logradouro:</Text>
-      <TextInput
-        style={styles.input}
-        value={logradouro}
-        onChangeText={setLogradouro}
-      />
+            <Text>UF:</Text>
+            <TextInput
+                style={styles.input}
+                value={uf}
+                onChangeText={setUf}
+                placeholder="Digite sua UF"
+            />
 
-      <Text>Cidade:</Text>
-      <TextInput
-        style={styles.input}
-        value={cidade}
-        onChangeText={setCidade}
-      />
+            <Text>CEP:</Text>
+            <TextInput
+                style={styles.input}
+                value={cep}
+                onChangeText={setCep}
+                placeholder="Digite seu CEP"
+            />
 
-      <Text>UF:</Text>
-      <TextInput
-        style={styles.input}
-        value={uf}
-        onChangeText={setUf}
-      />
+            <Text>Complemento:</Text>
+            <TextInput
+                style={styles.input}
+                value={complemento}
+                onChangeText={setComplemento}
+                placeholder="Digite o complemento"
+            />
 
-      <Text>CEP:</Text>
-      <TextInput
-        style={styles.input}
-        value={cep}
-        onChangeText={setCep}
-      />
+            <Text>Número da Casa:</Text>
+            <TextInput
+                style={styles.input}
+                value={numeroCasa}
+                onChangeText={setNumeroCasa}
+                placeholder="Digite o número da casa"
+            />
 
-      <Text>Complemento:</Text>
-      <TextInput
-        style={styles.input}
-        value={complemento}
-        onChangeText={setComplemento}
-      />
+            <Text>Email:</Text>
+            <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Digite seu email"
+            />
 
-      <Text>Número da Casa:</Text>
-      <TextInput
-        style={styles.input}
-        value={numeroCasa}
-        onChangeText={setNumeroCasa}
-      />
+            <Text>Telefone:</Text>
+            <TextInput
+                style={styles.input}
+                value={telefone}
+                onChangeText={setTelefone}
+                placeholder="Digite seu telefone"
+            />
 
-      <Text>Email:</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-      />
+            <Text>Senha:</Text>
+            <TextInput
+                style={styles.input}
+                value={senha}
+                onChangeText={setSenha}
+                secureTextEntry
+                placeholder="Digite sua senha"
+            />
 
-      <Text>Telefone:</Text>
-      <TextInput
-        style={styles.input}
-        value={telefone}
-        onChangeText={setTelefone}
-      />
+            <Text>Confirmar Senha:</Text>
+            <TextInput
+                style={styles.input}
+                value={confirmarSenha}
+                onChangeText={setConfirmarSenha}
+                secureTextEntry
+                placeholder="Confirme sua senha"
+            />
 
-      <Text>Nova Senha:</Text>
-      <TextInput
-        style={styles.input}
-        value={senha}
-        onChangeText={setSenha}
-        secureTextEntry
-      />
-
-      <Text>Confirmar Senha:</Text>
-      <TextInput
-        style={styles.input}
-        value={confirmarSenha}
-        onChangeText={setConfirmarSenha}
-        secureTextEntry
-      />
-
-      <Button
-        title="Salvar"
-        onPress={handleSave}
-      />
-    </View>
-  );
+            <Button title="Salvar" onPress={handleSave} />
+            <Button title="Logout" onPress={signOut} />
+        </ScrollView>
+    );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  input: {
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 10,
-    paddingLeft: 10,
-  },
+    container: {
+        padding: 20,
+        flex: 1,
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    input: {
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        marginBottom: 10,
+        paddingLeft: 10,
+    },
 });
 
 export default UserProfileForm;

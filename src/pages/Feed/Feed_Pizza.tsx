@@ -11,16 +11,18 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
+import { useCarrinho } from '../../contexts/CarrinhoContext';
 
 // Definindo o tipo dos dados da API
 interface Pizza {
   id: number;
   nome: string;
   descricao: string;
-  preco: number | null;
+  preco: number; // O preço agora é apenas número
 }
 
 export default function Feed() {
+  const { adicionarPizza } = useCarrinho();
   const [pizzas, setPizzas] = useState<Pizza[]>([]);
   const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
   const [selectedPizzas, setSelectedPizzas] = useState<Pizza[]>([]);
@@ -34,9 +36,8 @@ export default function Feed() {
         const response = await axios.get<Pizza[]>('https://devweb3.ok.etc.br/api/api_get_pizzas.php');
         const pizzasComPrecoConvertido = response.data.map(pizza => ({
           ...pizza,
-          preco: parseFloat(pizza.preco as string) || null,
+          preco: parseFloat(pizza.preco as unknown as string) || 0, // Converte o preço para número
         }));
-
         setPizzas(pizzasComPrecoConvertido);
       } catch (error) {
         console.error('Erro ao buscar os dados:', error);
@@ -50,16 +51,13 @@ export default function Feed() {
 
   const handleAddPizza = (pizza: Pizza) => {
     const currentQuantity = quantities[pizza.id] || 0;
-
     if (currentQuantity === 1) {
-      // Modal para pizza inteira
       setModalMessage(
         `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${(pizza.preco || 0) * 2}`
       );
       setSelectedPizzas([pizza]);
       setModalVisible(true);
     } else if (selectedPizzas.length === 1) {
-      // Modal para meia pizza combinada
       const previousPizza = selectedPizzas[0];
       setModalMessage(
         `Deseja adicionar meia ${previousPizza.nome} e meia ${pizza.nome}? Preço: R$ ${
@@ -84,35 +82,16 @@ export default function Feed() {
     }
   };
 
-  const resetQuantities = () => {
+  const handleConfirmAddition = () => {
+    setModalVisible(false);
     setQuantities({});
     setSelectedPizzas([]);
   };
 
-  const handleConfirmAddition = () => {
-    if (selectedPizzas.length === 2) {
-      // Adicionar combinação de duas meias pizzas
-      selectedPizzas.forEach(pizza => {
-        setQuantities(prev => ({
-          ...prev,
-          [pizza.id]: 0, // Zera a quantidade
-        }));
-      });
-    } else if (selectedPizzas.length === 1) {
-      // Adicionar pizza inteira
-      const pizza = selectedPizzas[0];
-      setQuantities(prev => ({
-        ...prev,
-        [pizza.id]: 0, // Zera a quantidade
-      }));
-    }
-    setModalVisible(false);
-    resetQuantities(); // Reseta as quantidades
-  };
-
   const handleCancelAddition = () => {
     setModalVisible(false);
-    resetQuantities(); // Reseta as quantidades ao cancelar
+    setQuantities({});
+    setSelectedPizzas([]);
   };
 
   const renderItem = ({ item }: { item: Pizza }) => (
@@ -128,11 +107,7 @@ export default function Feed() {
         <Text style={styles.itemTitle}>{item.nome || 'Nome não disponível'}</Text>
       </View>
       <Text style={styles.itemDescription}>{item.descricao || 'Descrição não disponível'}</Text>
-      <Text style={styles.itemPrice}>
-        {typeof item.preco === 'number' && !isNaN(item.preco)
-          ? `R$ ${item.preco.toFixed(2)}`
-          : 'Preço não disponível'}
-      </Text>
+      <Text style={styles.itemPrice}>{`R$ ${item.preco.toFixed(2)}`}</Text>
     </View>
   );
 
@@ -144,14 +119,13 @@ export default function Feed() {
       ) : (
         <FlatList
           data={pizzas}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={item => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={<Text style={styles.empty}>Nenhuma pizza encontrada.</Text>}
         />
       )}
 
-      {/* Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -248,4 +222,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
+
 });
