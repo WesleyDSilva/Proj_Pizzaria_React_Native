@@ -40,7 +40,7 @@ export default function Bottom_Tabs(): React.JSX.Element {
                                 <Icon name="home" color={color} size={size} />
                             </View>
                         ),
-                        tabBarLabel: 'k'
+                        tabBarLabel: ''
                     }}
                 />
 

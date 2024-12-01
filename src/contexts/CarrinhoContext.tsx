@@ -1,42 +1,44 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 
-interface Pizza {
+interface CarrinhoItem {
   id: number;
-  nome: string;
-  descricao: string;
-  preco: number | null;
+  cliente_id: number;
+  preco: number;
+  nome_pizza: string;
+  tipo_pizza: string;
 }
 
 interface CarrinhoContextProps {
-  carrinho: Pizza[];
-  adicionarPizza: (pizza: Pizza) => void;
-  removerPizza: (id: number) => void;
+  carrinho: CarrinhoItem[];
+  setCarrinho: React.Dispatch<React.SetStateAction<CarrinhoItem[]>>;
+  adicionarPizza: (pizza: CarrinhoItem) => void;
+  removerPizza: (pizzaId: number) => void;
 }
 
 const CarrinhoContext = createContext<CarrinhoContextProps | undefined>(undefined);
 
-export const CarrinhoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [carrinho, setCarrinho] = useState<Pizza[]>([]);
-
-  const adicionarPizza = (pizza: Pizza) => {
-    setCarrinho(prev => [...prev, pizza]);
-  };
-
-  const removerPizza = (id: number) => {
-    setCarrinho(prev => prev.filter(pizza => pizza.id !== id));
-  };
-
-  return (
-    <CarrinhoContext.Provider value={{ carrinho, adicionarPizza, removerPizza }}>
-      {children}
-    </CarrinhoContext.Provider>
-  );
-};
-
 export const useCarrinho = () => {
   const context = useContext(CarrinhoContext);
   if (!context) {
-    throw new Error('useCarrinho deve ser usado dentro de um CarrinhoProvider');
+    throw new Error('useCarrinho must be used within a CarrinhoProvider');
   }
   return context;
+};
+
+export const CarrinhoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
+
+  const adicionarPizza = (pizza: CarrinhoItem) => {
+    setCarrinho((prev) => [...prev, pizza]);
+  };
+
+  const removerPizza = (pizzaId: number) => {
+    setCarrinho((prev) => prev.filter(item => item.id !== pizzaId));
+  };
+
+  return (
+    <CarrinhoContext.Provider value={{ carrinho, setCarrinho, adicionarPizza, removerPizza }}>
+      {children}
+    </CarrinhoContext.Provider>
+  );
 };

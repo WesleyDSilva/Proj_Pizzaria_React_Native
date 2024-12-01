@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,17 +12,19 @@ import {
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
 import { useCarrinho } from '../../contexts/CarrinhoContext';
+import { AuthContext } from '../../contexts/AuthContext';
 
 // Definindo o tipo dos dados da API
 interface Pizza {
   id: number;
   nome: string;
   descricao: string;
-  preco: number; // O preço agora é apenas número
+  preco: number;
 }
 
 export default function Feed() {
   const { adicionarPizza } = useCarrinho();
+  const { user } = useContext(AuthContext); // Pegando o usuário do contexto de autenticação
   const [pizzas, setPizzas] = useState<Pizza[]>([]);
   const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
   const [selectedPizzas, setSelectedPizzas] = useState<Pizza[]>([]);
@@ -51,6 +53,7 @@ export default function Feed() {
 
   const handleAddPizza = (pizza: Pizza) => {
     const currentQuantity = quantities[pizza.id] || 0;
+
     if (currentQuantity === 1) {
       setModalMessage(
         `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${(pizza.preco || 0) * 2}`
@@ -83,6 +86,37 @@ export default function Feed() {
   };
 
   const handleConfirmAddition = () => {
+    if (!user.id) {
+      setModalMessage("Você precisa estar logado para adicionar itens ao carrinho.");
+      setModalVisible(true);
+      return;
+    }
+
+    // Envia a pizza para o carrinho e chama a API
+    selectedPizzas.forEach(pizza => {
+      const tipoPizza = selectedPizzas.length > 1 ? 'meia' : 'inteira'; // Define o tipo da pizza
+
+      // Adiciona a pizza ao carrinho no contexto
+      
+
+
+      // Envia a requisição para registrar a pizza no carrinho na API
+      axios
+        .post('https://devweb3.ok.etc.br/api/api_registrar_carrinho.php', {
+          cliente_id: user.id, // Agora pegamos o ID do cliente do contexto
+          preco: pizza.preco,
+          nome_pizza: pizza.nome,
+          tipo_pizza: tipoPizza, // Envia o tipo da pizza (meia ou inteira)
+        })
+        .then(response => {
+          console.log('Pizza registrada no carrinho:', response.data);
+        })
+        .catch(error => {
+          console.error('Erro ao registrar pizza no carrinho:', error);
+        });
+    });
+
+    // Fecha o modal e limpa o estado de pizzas selecionadas
     setModalVisible(false);
     setQuantities({});
     setSelectedPizzas([]);
@@ -222,5 +256,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
-
 });
