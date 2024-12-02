@@ -1,12 +1,6 @@
+// CarrinhoContext.tsx
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-
-interface CarrinhoItem {
-  id: number;
-  cliente_id: number;
-  preco: number;
-  nome_pizza: string;
-  tipo_pizza: string;
-}
+import { CarrinhoItem } from './CarrinhoItem';
 
 interface CarrinhoContextProps {
   carrinho: CarrinhoItem[];

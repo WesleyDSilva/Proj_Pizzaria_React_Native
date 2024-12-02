@@ -96,14 +96,12 @@ export default function Feed() {
     selectedPizzas.forEach(pizza => {
       const tipoPizza = selectedPizzas.length > 1 ? 'meia' : 'inteira'; // Define o tipo da pizza
 
-      // Adiciona a pizza ao carrinho no contexto
-      
-
 
       // Envia a requisição para registrar a pizza no carrinho na API
       axios
         .post('https://devweb3.ok.etc.br/api/api_registrar_carrinho.php', {
           cliente_id: user.id, // Agora pegamos o ID do cliente do contexto
+          pizza_id: pizza.id,
           preco: pizza.preco,
           nome_pizza: pizza.nome,
           tipo_pizza: tipoPizza, // Envia o tipo da pizza (meia ou inteira)

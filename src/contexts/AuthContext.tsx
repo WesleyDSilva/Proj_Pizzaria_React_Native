@@ -2,6 +2,7 @@ import React, { useState, createContext, ReactNode, useEffect } from "react";
 import { api } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+
 type AuthContextData = {
     user: UserProps;
     isAuthenticated: boolean;

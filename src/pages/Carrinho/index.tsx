@@ -1,18 +1,12 @@
+// Carrinho.tsx
 import React, { useState, useContext, useCallback } from 'react';
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useCarrinho } from '../../contexts/CarrinhoContext';
 import { useFocusEffect } from '@react-navigation/native';
-
-interface CarrinhoItem {
-  id: number;
-  cliente_id: number;
-  preco: string;  // Alterado para string, pois o valor vindo da API pode ser string
-  nome_pizza: string;
-  tipo_pizza: string;
-}
+import { CarrinhoItem } from '../../contexts/CarrinhoItem';
 
 const Carrinho = () => {
   const { user } = useContext(AuthContext);
@@ -20,15 +14,21 @@ const Carrinho = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Função para buscar os itens do carrinho
   const fetchCarrinho = async () => {
     try {
       setLoading(true);
       const response = await axios.get(
         `https://devweb3.ok.etc.br/api/api_get_carrinho.php?cliente_id=${user.id}`
       );
-      console.log('Dados do carrinho recebidos:', response.data);
-      setCarrinho(response.data); // Atualiza o estado global com os dados do carrinho
+      const carrinhoData: CarrinhoItem[] = response.data.map((item: any) => ({
+        id: Number(item.id),
+        pizza_id: Number(item.pizza_id),
+        preco: parseFloat(item.preco),
+        nome_pizza: item.nome_pizza,
+        tipo_pizza: item.tipo_pizza,
+        cliente_id: item.cliente_id ? Number(item.cliente_id) : undefined, // Tratar cliente_id como opcional
+      }));
+      setCarrinho(carrinhoData);
       setError(null);
     } catch (err) {
       console.error('Erro ao buscar os dados do carrinho:', err);
@@ -38,7 +38,6 @@ const Carrinho = () => {
     }
   };
 
-  // Atualizar carrinho ao abrir a aba
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
@@ -47,7 +46,6 @@ const Carrinho = () => {
     }, [user])
   );
 
-  // Função para excluir item
   const deleteItem = async (id: number) => {
     try {
       const response = await axios.delete(
@@ -55,7 +53,7 @@ const Carrinho = () => {
       );
       if (response.data.success) {
         Alert.alert('Sucesso', 'Item excluído com sucesso');
-        removerPizza(id); // Remove o item localmente do carrinho
+        removerPizza(id);
       } else {
         Alert.alert('Erro', response.data.error || 'Erro ao excluir o item');
       }
@@ -65,9 +63,43 @@ const Carrinho = () => {
     }
   };
 
-  // Calcular o total dos preços
-  const total = carrinho && Array.isArray(carrinho) ? 
-    carrinho.reduce((acc, item) => acc + (Number(item.preco) || 0), 0) : 0;
+  const handleFavorite = async (item: CarrinhoItem) => {
+    try {
+      // Crie a estrutura do pedido com base no item clicado
+      const pizza = {
+        cliente_id: item.cliente_id ?? user.id, // Garantir que cliente_id seja um número
+        pizza_id: item.pizza_id,
+        nome_pizza: item.nome_pizza,
+        preco: item.preco,
+      };
+  
+      // Verifique se todos os campos necessários estão presentes
+      if (!pizza.cliente_id || !pizza.pizza_id || !pizza.nome_pizza || !pizza.preco) {
+        Alert.alert('Erro', 'Campos obrigatórios não preenchidos');
+        return;
+      }
+  
+      // Exiba os dados no console antes de enviar à API
+      console.log("Enviando o pedido para a API:", pizza);
+  
+      // Envie o item para a API
+      const response = await axios.post('https://devweb3.ok.etc.br/api/api_pedido_favorito.php', { pizzas: [pizza] });
+  
+      if (response.data.success) {
+        Alert.alert('Sucesso', 'Pizza adicionada aos favoritos!');
+      } else {
+        Alert.alert('Erro', response.data.message || 'Erro ao adicionar aos favoritos.');
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar aos favoritos:', error);
+      Alert.alert('Erro', 'Erro ao adicionar aos favoritos.');
+    }
+  };
+  
+
+  const total = carrinho && carrinho.length > 0
+    ? carrinho.reduce((acc, item) => acc + item.preco, 0)
+    : 0;
 
   if (loading) {
     return (
@@ -97,25 +129,27 @@ const Carrinho = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Carrinho</Text>
       <FlatList
-        data={carrinho}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.itemText}>
-              {item.nome_pizza} - {item.tipo_pizza}
-            </Text>
-            <Text style={styles.itemText}>
-              R$ {item.preco ? Number(item.preco).toFixed(2) : '0.00'}
-            </Text>
-            <Icon
-              name="trash"
-              size={24}
-              color="red"
-              onPress={() => deleteItem(item.id)}
-            />
-          </View>
-        )}
+  data={carrinho}
+  keyExtractor={(item) => item.id.toString()}
+  renderItem={({ item }) => (
+    <View style={styles.item}>
+      <TouchableOpacity onPress={() => handleFavorite(item)}>
+        <Icon name="heart" size={20} color="red" style={styles.icon} />
+      </TouchableOpacity>
+      <Text style={styles.itemText}>
+        {item.nome_pizza} - {item.tipo_pizza}
+      </Text>
+      <Text style={styles.itemText}>R$ {item.preco.toFixed(2)}</Text>
+      <Icon
+        name="trash"
+        size={24}
+        color="red"
+        onPress={() => deleteItem(item.id)}
       />
+    </View>
+  )}
+/>
+
       <View style={styles.totalContainer}>
         <Text style={styles.totalText}>Total: R$ {total.toFixed(2)}</Text>
       </View>
@@ -144,6 +178,11 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 16,
+    flex: 1,
+    marginLeft: 10,
+  },
+  icon: {
+    marginRight: 10,
   },
   centered: {
     flex: 1,
