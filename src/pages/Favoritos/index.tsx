@@ -22,7 +22,7 @@ export default function Favoritos() {
   const fetchFavoritos = async () => {
     setLoading(true); // Começa o carregamento
     try {
-      const response = await axios.get('https://devweb3.ok.etc.br/api/api_get_pedidos_favoritos.php?cliente_id=2');
+      const response = await axios.get(`https://devweb3.ok.etc.br/api/api_get_pedidos_favoritos.php?cliente_id=${user.id}`);
       console.log('Resposta Completa da API:', response.data); // Verifique a resposta da API
   
       // Verificar se a resposta é um array
@@ -41,11 +41,24 @@ export default function Favoritos() {
   };
 
   // Função para remover um favorito
-  const removerFavorito = (pizza_id: number) => {
-    // Aqui você pode fazer a lógica para remover o favorito, por exemplo, fazer uma requisição para o backend ou apenas remover do estado.
-    setFavoritos(favoritos.filter(favorito => favorito.pizza_id !== pizza_id));
-    console.log(`Favorito com pizza_id ${pizza_id} removido`);
+  const removerFavorito = async (pizza_id: number) => {
+    try {
+      // Realiza a requisição GET passando pizza_id e cliente_id na URL
+      const response = await axios.get(
+        `https://devweb3.ok.etc.br/api/api_delete_favorito.php?pizza_id=${pizza_id}&cliente_id=${user.id}`
+      );
+  
+      if (response.data.success) {
+        setFavoritos(favoritos.filter(favorito => favorito.pizza_id !== pizza_id));
+        console.log(`Favorito com pizza_id ${pizza_id} removido com sucesso.`);
+      } else {
+        console.error('Erro ao remover favorito:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Erro ao fazer requisição GET:', error);
+    }
   };
+  
 
   // Executa a requisição toda vez que a tela for focada
   useEffect(() => {
