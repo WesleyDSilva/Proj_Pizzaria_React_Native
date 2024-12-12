@@ -1,5 +1,4 @@
-// Carrinho.tsx
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useContext, useCallback } from 'react'; 
 import { StyleSheet, Text, View, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
@@ -26,7 +25,7 @@ const Carrinho = () => {
         preco: parseFloat(item.preco),
         nome_pizza: item.nome_pizza,
         tipo_pizza: item.tipo_pizza,
-        cliente_id: item.cliente_id ? Number(item.cliente_id) : undefined, // Tratar cliente_id como opcional
+        cliente_id: item.cliente_id ? Number(item.cliente_id) : undefined,
       }));
       setCarrinho(carrinhoData);
       setError(null);
@@ -46,16 +45,28 @@ const Carrinho = () => {
     }, [user])
   );
 
-  const deleteItem = async (id: number) => {
+  const deleteItem = async (pizza_id: number, cliente_id: number) => {
+    console.log('Recebido para exclusão - Pizza ID:', pizza_id, 'Cliente ID:', cliente_id);
     try {
-      const response = await axios.delete(
-        `https://devweb3.ok.etc.br/api/api_delete_carrinho.php?id=${id}`
-      );
+      const idCliente = cliente_id || user.id; // Usa user.id se cliente_id não estiver disponível
+
+      if (!idCliente) {
+        console.log('Erro: Cliente ID não encontrado para a exclusão');
+        Alert.alert('Erro', 'ID do cliente não encontrado.');
+        return;
+      }
+
+      // Montar a URL com os parâmetros de consulta
+      const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho.php?pizza_id=${pizza_id}&cliente_id=${idCliente}`;
+      console.log('URL gerada para exclusão:', url);
+
+      const response = await axios.get(url); // Fazer a requisição GET
+
       if (response.data.success) {
         Alert.alert('Sucesso', 'Item excluído com sucesso');
-        removerPizza(id);
+        removerPizza(pizza_id); // Remover a pizza do carrinho localmente
       } else {
-        Alert.alert('Erro', response.data.error || 'Erro ao excluir o item');
+        Alert.alert('Erro', response.data.message || 'Erro ao excluir o item');
       }
     } catch (err) {
       console.error('Erro ao excluir o item:', err);
@@ -65,26 +76,20 @@ const Carrinho = () => {
 
   const handleFavorite = async (item: CarrinhoItem) => {
     try {
-      // Crie a estrutura do pedido com base no item clicado
       const pizza = {
         cliente_id: item.cliente_id ?? user.id, // Garantir que cliente_id seja um número
         pizza_id: item.pizza_id,
         nome_pizza: item.nome_pizza,
         preco: item.preco,
       };
-  
-      // Verifique se todos os campos necessários estão presentes
+
       if (!pizza.cliente_id || !pizza.pizza_id || !pizza.nome_pizza || !pizza.preco) {
         Alert.alert('Erro', 'Campos obrigatórios não preenchidos');
         return;
       }
-  
-      // Exiba os dados no console antes de enviar à API
-      console.log("Enviando o pedido para a API:", pizza);
-  
-      // Envie o item para a API
+
       const response = await axios.post('https://devweb3.ok.etc.br/api/api_pedido_favorito.php', { pizzas: [pizza] });
-  
+
       if (response.data.success) {
         Alert.alert('Sucesso', 'Pizza adicionada aos favoritos!');
       } else {
@@ -95,7 +100,6 @@ const Carrinho = () => {
       Alert.alert('Erro', 'Erro ao adicionar aos favoritos.');
     }
   };
-  
 
   const total = carrinho && carrinho.length > 0
     ? carrinho.reduce((acc, item) => acc + item.preco, 0)
@@ -129,27 +133,35 @@ const Carrinho = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Carrinho</Text>
       <FlatList
-  data={carrinho}
-  keyExtractor={(item) => item.id.toString()}
-  renderItem={({ item }) => (
-    <View style={styles.item}>
-      <TouchableOpacity onPress={() => handleFavorite(item)}>
-        <Icon name="heart" size={20} color="red" style={styles.icon} />
-      </TouchableOpacity>
-      <Text style={styles.itemText}>
-        {item.nome_pizza} - {item.tipo_pizza}
-      </Text>
-      <Text style={styles.itemText}>R$ {item.preco.toFixed(2)}</Text>
-      <Icon
-        name="trash"
-        size={24}
-        color="red"
-        onPress={() => deleteItem(item.id)}
+        data={carrinho}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.item}>
+            <TouchableOpacity onPress={() => handleFavorite(item)}>
+              <Icon name="heart" size={20} color="red" style={styles.icon} />
+            </TouchableOpacity>
+            <Text style={styles.itemText}>
+              {item.nome_pizza} - {item.tipo_pizza}
+            </Text>
+            <Text style={styles.itemText}>R$ {item.preco.toFixed(2)}</Text>
+            <Icon
+              name="trash"
+              size={24}
+              color="red"
+              onPress={() => {
+                const clienteId = item.cliente_id ?? user.id; // Garantir que cliente_id seja um número
+                if (clienteId) {
+                  console.log('Enviando para exclusão - Cliente ID:', clienteId, 'Pizza ID:', item.pizza_id);
+                  deleteItem(item.pizza_id, clienteId); // Chama deleteItem
+                } else {
+                  console.log('Erro: Cliente ID não encontrado para a exclusão');
+                  Alert.alert('Erro', 'ID do cliente não encontrado.');
+                }
+              }}
+            />
+          </View>
+        )}
       />
-    </View>
-  )}
-/>
-
       <View style={styles.totalContainer}>
         <Text style={styles.totalText}>Total: R$ {total.toFixed(2)}</Text>
       </View>
