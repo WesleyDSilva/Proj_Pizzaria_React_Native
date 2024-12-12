@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { View, TextInput, Text, Button, StyleSheet, Alert, ScrollView } from 'react-native';
 import axios from 'axios';
 import { AuthContext } from '../../contexts/AuthContext';
+import { buscaEndereco } from "../../services/enderecoService";
 
 const UserProfileForm = () => {
     const { user } = useContext(AuthContext);
@@ -19,23 +20,42 @@ const UserProfileForm = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const handleCepChange = async (value:string) => {
+        setCep(value);
+        if (value.length === 8) {
+            try {
+                setLoading(true);
+                const endereco = await buscaEndereco(value);
+                setLogradouro(endereco.logradouro);
+                setCidade(endereco.cidade);
+                setUf(endereco.estado);
+            } catch (err) {
+                Alert.alert('Erro', );
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            setLogradouro('');
+            setCidade('');
+            setUf('');
+        }
+    };
+
+
     useEffect(() => {
         const fetchUserData = async () => {
-            if (!user.id) {
+            if (!user?.id) {
                 setError('Usuário não autenticado.');
                 setLoading(false);
                 return;
             }
 
             try {
-                console.log('User:', user);
-                console.log('User ID:', user.id);
-
+                setLoading(true);
                 const response = await axios.get(`https://devweb3.ok.etc.br/api/api_get_user.php?id=${user.id}`);
-                const usuario = response.data; // Aqui, response.data é um objeto, não um array
+                const usuario = response.data;
 
                 if (usuario && usuario.id) {
-                    // Se o usuário for encontrado, preenche os campos
                     setNome(usuario.nome);
                     setLogradouro(usuario.logradouro);
                     setCidade(usuario.cidade);
@@ -57,10 +77,11 @@ const UserProfileForm = () => {
         };
 
         fetchUserData();
-    }, [user.id]); // Aqui, a dependência é o user.id
+    }, [user?.id]);
+
 
     const handleSave = async () => {
-        if (senha && senha !== confirmarSenha) {
+       if (senha && senha !== confirmarSenha) {
             Alert.alert('Erro', 'As senhas não correspondem.');
             return;
         }
@@ -73,11 +94,12 @@ const UserProfileForm = () => {
             uf,
             cep,
             complemento,
-            numero_casa: numeroCasa,
+            numeroCasa,
             email,
             telefone,
-            senha: senha || undefined,
+           senha: senha || undefined,
         };
+            console.log('Dados a serem enviados:', dadosAtualizados);
 
         try {
             await axios.post('https://devweb3.ok.etc.br/api/api_update_user.php', dadosAtualizados);
@@ -87,6 +109,7 @@ const UserProfileForm = () => {
             console.error(err);
         }
     };
+
 
     if (loading) return <Text>Carregando...</Text>;
     if (error) return <Text style={{ color: 'red' }}>{error}</Text>;
@@ -108,7 +131,7 @@ const UserProfileForm = () => {
             <TextInput
                 style={styles.input}
                 value={logradouro}
-                onChangeText={setLogradouro}
+                 editable = {false}
                 placeholder="Digite seu logradouro"
             />
 
@@ -116,7 +139,7 @@ const UserProfileForm = () => {
             <TextInput
                 style={styles.input}
                 value={cidade}
-                onChangeText={setCidade}
+                  editable = {false}
                 placeholder="Digite sua cidade"
             />
 
@@ -124,7 +147,7 @@ const UserProfileForm = () => {
             <TextInput
                 style={styles.input}
                 value={uf}
-                onChangeText={setUf}
+                  editable = {false}
                 placeholder="Digite sua UF"
             />
 
@@ -132,8 +155,10 @@ const UserProfileForm = () => {
             <TextInput
                 style={styles.input}
                 value={cep}
-                onChangeText={setCep}
+                onChangeText={handleCepChange}
                 placeholder="Digite seu CEP"
+                keyboardType="numeric"
+                maxLength={8}
             />
 
             <Text>Complemento:</Text>

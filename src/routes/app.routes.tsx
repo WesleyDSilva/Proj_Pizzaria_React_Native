@@ -22,6 +22,8 @@ function AppRoutes(){
                 component={Order}
                 options={{headerShown:false}}            
             />
+
+            
         </Stack.Navigator>
     )
 }

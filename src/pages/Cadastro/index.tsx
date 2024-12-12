@@ -5,6 +5,8 @@ import { buscaEndereco } from "../../services/enderecoService";
 import { cadastrarUsuario } from "../../services/api_cadastro";
 
 
+
+
 export default function Cadastro(): React.JSX.Element {
   const [focusedField, setFocusedField] = useState<string | null>(null);
 

@@ -29,7 +29,7 @@ export default function Favoritos() {
       if (Array.isArray(response.data)) {
         setFavoritos(response.data); // Atualiza o estado com os favoritos
       } else {
-        console.log('Nenhum favorito encontrado ou resposta inválida');
+        console.log('Nenhum favorito encontrado');
         setFavoritos([]); // Garantir que o estado seja um array vazio, caso não haja favoritos
       }
     } catch (error) {
