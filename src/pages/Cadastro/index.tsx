@@ -7,6 +7,8 @@ import { buscaEndereco } from "../../services/enderecoService";
 import { cadastrarUsuario } from "../../services/api_cadastro";
 
 
+
+
 export default function Cadastro(): React.JSX.Element {
   const navigation = useNavigation(); // Uso do hook de navegação
   const [focusedField, setFocusedField] = useState<string | null>(null);

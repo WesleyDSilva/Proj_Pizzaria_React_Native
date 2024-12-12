@@ -6,6 +6,7 @@ import Routes from "./src/routes";
 
 import { AuthProvider } from "./src/contexts/AuthContext";
 
+import { CarrinhoProvider } from "./src/contexts/CarrinhoContext";
 
 
 
@@ -14,7 +15,9 @@ export default function App(){
     <NavigationContainer>   
       <AuthProvider>  
         <StatusBar backgroundColor="#FFA831" barStyle="light-content" translucent={false}/>
-        <Routes/>
+        <CarrinhoProvider>
+          <Routes/>
+        </CarrinhoProvider>
       </AuthProvider>
     </NavigationContainer>       
     

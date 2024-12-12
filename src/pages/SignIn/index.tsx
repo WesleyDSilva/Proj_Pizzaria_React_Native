@@ -10,9 +10,18 @@ import { View,
 import { useNavigation } from "@react-navigation/native"; // Importação para navegação
 import { AuthContext } from "../../contexts/AuthContext";
 
+import { StackNavigationProp } from '@react-navigation/stack';
+type AuthStackParamList = {
+  SignIn: undefined;
+  Cadastro: undefined;
+};
+
+
 export default function SignIn(): React.JSX.Element {
+  const navigation = useNavigation<StackNavigationProp<AuthStackParamList, 'SignIn'>>();
+
   const { signIn, loadingAuth } = useContext(AuthContext);
-  const navigation = useNavigation(); // Hook para navegação
+  //const navigation = useNavigation(); // Hook para navegação
 
   const [isFocused, setIsFocused] = useState(false);
   const [isFocusedUser, setIsFocusedUser] = useState(false);
@@ -26,6 +35,11 @@ export default function SignIn(): React.JSX.Element {
     }
     await signIn({ email, password });
   }
+
+  const handleLogin2 = async () => {
+    // Lógica de login
+    navigation.navigate('Cadastro');  // Navega para a tela de Cadastro
+  };
 
   return (
     <View style={styles.container}>
@@ -63,7 +77,7 @@ export default function SignIn(): React.JSX.Element {
         </TouchableOpacity>
 
         {/* Adicionando o link para a página de Cadastro */}
-        <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
+        <TouchableOpacity onPress={() => navigation.navigate("Cadastro")}>
           <Text style={styles.linkText}>
             Não possui Cadastro ainda? Clique aqui!
           </Text>
