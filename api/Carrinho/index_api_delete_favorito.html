@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Excluir Pedido Favorito</title>
+  </head>
+  <body>
+    <h2>Excluir Pedido Favorito</h2>
+
+    <label for="cliente_id">ID do Cliente:</label>
+    <input type="number" id="cliente_id" required />
+
+    <label for="pizza_id">ID da Pizza:</label>
+    <input type="number" id="pizza_id" required />
+
+    <button onclick="removerPedido()">Excluir</button>
+
+    <p id="mensagem"></p>
+
+    <script>
+      async function removerPedido() {
+        const cliente_id = document.getElementById("cliente_id").value;
+        const pizza_id = document.getElementById("pizza_id").value;
+        const mensagem = document.getElementById("mensagem");
+
+        if (!cliente_id || !pizza_id) {
+          mensagem.innerText = "Preencha todos os campos!";
+          mensagem.style.color = "red";
+          return;
+        }
+
+        const url = `api_delete_favorito.php?pizza_id=${pizza_id}&cliente_id=${cliente_id}`;
+
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            mensagem.innerText = data.message;
+            mensagem.style.color = "green";
+          } else {
+            mensagem.innerText = data.message;
+            mensagem.style.color = "red";
+          }
+        } catch (error) {
+          mensagem.innerText = "Erro ao conectar com a API.";
+          mensagem.style.color = "red";
+        }
+      }
+    </script>
+  </body>
+</html>
