@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registrar Pedido Favorito</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f4f4f4;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        padding: 10px;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        border-radius: 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      #mensagem {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Registrar Pedido Favorito</h2>
+      <input type="number" id="cliente_id" placeholder="ID do Cliente" />
+      <input type="number" id="pizza_id" placeholder="ID da Pizza" />
+      <input type="text" id="nome_pizza" placeholder="Nome da Pizza" />
+      <input type="number" step="0.01" id="preco" placeholder="Preço" />
+      <button onclick="registrarPedido()">Salvar Pedido</button>
+      <p id="mensagem"></p>
+    </div>
+
+    <script>
+      async function registrarPedido() {
+        const cliente_id = document.getElementById("cliente_id").value;
+        const pizza_id = document.getElementById("pizza_id").value;
+        const nome_pizza = document.getElementById("nome_pizza").value;
+        const preco = document.getElementById("preco").value;
+        const mensagem = document.getElementById("mensagem");
+
+        if (!cliente_id || !pizza_id || !nome_pizza || !preco) {
+          mensagem.innerText = "Preencha todos os campos!";
+          mensagem.style.color = "red";
+          return;
+        }
+
+        const pedido = {
+          pizzas: [
+            {
+              cliente_id: parseInt(cliente_id),
+              pizza_id: parseInt(pizza_id),
+              nome_pizza: nome_pizza,
+              preco: parseFloat(preco),
+            },
+          ],
+        };
+
+        try {
+          const response = await fetch("api_pedido_favorito.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(pedido),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            mensagem.innerText = data.message;
+            mensagem.style.color = "green";
+          } else {
+            mensagem.innerText = data.message;
+            mensagem.style.color = "red";
+          }
+        } catch (error) {
+          mensagem.innerText = "Erro ao conectar com a API.";
+          mensagem.style.color = "red";
+        }
+      }
+    </script>
+  </body>
+</html>
