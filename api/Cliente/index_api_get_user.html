@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consultar Usuário</title>
+    <script>
+      function buscarUsuario() {
+        let userId = document.getElementById("userId").value.trim();
+
+        if (!userId) {
+          alert("Digite um ID válido!");
+          return;
+        }
+
+        let url = `api_get_user.php?id=${userId}`;
+
+        fetch(url)
+          .then((response) => response.json())
+          .then((data) => {
+            let resultado = document.getElementById("resultado");
+
+            if (data.error) {
+              resultado.innerHTML = `<p style="color: red;">${data.message}</p>`;
+            } else {
+              resultado.innerHTML = `
+                            <h3>Dados do Usuário</h3>
+                            <p><strong>ID:</strong> ${data.id}</p>
+                            <p><strong>Nome:</strong> ${data.nome}</p>
+                            <p><strong>Logradouro:</strong> ${
+                              data.logradouro
+                            }</p>
+                            <p><strong>Cidade:</strong> ${data.cidade}</p>
+                            <p><strong>UF:</strong> ${data.UF}</p>
+                            <p><strong>CEP:</strong> ${data.cep}</p>
+                            <p><strong>Complemento:</strong> ${
+                              data.complemento || "N/A"
+                            }</p>
+                            <p><strong>Número da Casa:</strong> ${
+                              data.numero_casa
+                            }</p>
+                            <p><strong>Email:</strong> ${data.email}</p>
+                            <p><strong>Telefone:</strong> ${data.telefone}</p>
+                        `;
+            }
+          })
+          .catch((error) => {
+            document.getElementById(
+              "resultado"
+            ).innerHTML = `<p style="color: red;">Erro ao buscar usuário.</p>`;
+            console.error("Erro:", error);
+          });
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Consultar Usuário</h2>
+    <label for="userId">Digite o ID do usuário:</label>
+    <input type="number" id="userId" min="1" />
+    <button onclick="buscarUsuario()">Buscar</button>
+
+    <div id="resultado"></div>
+  </body>
+</html>
