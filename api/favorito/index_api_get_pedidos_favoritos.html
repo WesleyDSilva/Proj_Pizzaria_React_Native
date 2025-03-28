@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pedidos Favoritos</title>
+  </head>
+  <body>
+    <h2>Pedidos Favoritos</h2>
+
+    <label for="cliente_id">ID do Cliente:</label>
+    <input type="number" id="cliente_id" placeholder="Digite o ID do cliente" />
+    <button onclick="carregarFavoritos()">Buscar Favoritos</button>
+
+    <ul id="lista_favoritos"></ul>
+
+    <script>
+      async function carregarFavoritos() {
+        const clienteId = document.getElementById("cliente_id").value;
+
+        if (!clienteId) {
+          alert("Por favor, insira um ID de cliente.");
+          return;
+        }
+
+        const url = `api_get_pedidos_favoritos.php?cliente_id=${clienteId}`;
+
+        try {
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error("Erro ao buscar os dados.");
+          }
+
+          const data = await response.json();
+
+          const lista = document.getElementById("lista_favoritos");
+          lista.innerHTML = "";
+
+          if (data.length === 0) {
+            lista.innerHTML = `<li>Nenhum pedido favorito encontrado.</li>`;
+            return;
+          }
+
+          data.forEach((item) => {
+            const li = document.createElement("li");
+            li.textContent = `${item.nome_pizza} - R$${item.preco}`;
+            lista.appendChild(li);
+          });
+        } catch (error) {
+          console.error("Erro:", error);
+          alert("Erro ao carregar os pedidos favoritos.");
+        }
+      }
+    </script>
+  </body>
+</html>
