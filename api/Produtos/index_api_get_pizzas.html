@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lista de Pizzas</title>
+  </head>
+  <body>
+    <h2>Lista de Pizzas</h2>
+    <button onclick="carregarPizzas()">Carregar Pizzas</button>
+
+    <ul id="lista_pizzas"></ul>
+
+    <script>
+      async function carregarPizzas() {
+        const url = "api_get_pizzas.php"; // URL da sua API
+
+        try {
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error("Erro ao buscar os dados.");
+          }
+
+          const data = await response.json();
+
+          const lista = document.getElementById("lista_pizzas");
+          lista.innerHTML = "";
+
+          if (data.length === 0 || data.error) {
+            lista.innerHTML = `<li>Nenhuma pizza encontrada.</li>`;
+            return;
+          }
+
+          data.forEach((pizza) => {
+            const li = document.createElement("li");
+            li.textContent = `${pizza.nome} - R$${pizza.preco}`;
+            lista.appendChild(li);
+          });
+        } catch (error) {
+          console.error("Erro:", error);
+          alert("Erro ao carregar as pizzas.");
+        }
+      }
+    </script>
+  </body>
+</html>
