@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f4f4f4;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        background: #28a745;
+        color: white;
+        padding: 10px;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        border-radius: 5px;
+      }
+      button:hover {
+        background: #218838;
+      }
+      #mensagem {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Login</h2>
+      <input type="email" id="email" placeholder="Digite seu email" />
+      <input type="password" id="senha" placeholder="Digite sua senha" />
+      <button onclick="autenticar()">Entrar</button>
+      <p id="mensagem"></p>
+    </div>
+
+    <script>
+      async function autenticar() {
+        const email = document.getElementById("email").value;
+        const senha = document.getElementById("senha").value;
+        const mensagem = document.getElementById("mensagem");
+
+        if (!email || !senha) {
+          mensagem.innerText = "Preencha todos os campos!";
+          mensagem.style.color = "red";
+          return;
+        }
+
+        //const response = await fetch("api_auth.php", {
+        const response = await fetch("api_auth_hash.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, senha }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          mensagem.innerText = `Bem-vindo, ${data.user.nome}!`;
+          mensagem.style.color = "green";
+        } else {
+          mensagem.innerText = data.message;
+          mensagem.style.color = "red";
+        }
+      }
+    </script>
+  </body>
+</html>
