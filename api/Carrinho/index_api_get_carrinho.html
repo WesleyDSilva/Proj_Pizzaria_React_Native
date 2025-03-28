@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consulta Carrinho</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      .carrinho {
+        margin-top: 20px;
+      }
+      .carrinho-item {
+        border-bottom: 1px solid #ddd;
+        padding: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Itens do Carrinho do Cliente</h1>
+    <div>
+      <label for="cliente_id">Informe o ID do Cliente:</label>
+      <input type="number" id="cliente_id" placeholder="ID do Cliente" />
+      <button onclick="carregarCarrinho()">Carregar Carrinho</button>
+    </div>
+
+    <div class="carrinho" id="carrinho"></div>
+
+    <script>
+      function carregarCarrinho() {
+        const clienteId = document.getElementById("cliente_id").value;
+        const carrinhoDiv = document.getElementById("carrinho");
+
+        if (!clienteId) {
+          alert("Por favor, insira o ID do cliente!");
+          return;
+        }
+
+        fetch(`api_get_carrinho.php?cliente_id=${clienteId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            carrinhoDiv.innerHTML = ""; // Limpa os resultados anteriores
+            if (data.error) {
+              carrinhoDiv.innerHTML = `<p><strong>Erro:</strong> ${data.message}</p>`;
+            } else {
+              if (data.length === 0) {
+                carrinhoDiv.innerHTML =
+                  "<p>Nenhum item encontrado no carrinho.</p>";
+              } else {
+                data.forEach((item) => {
+                  const itemDiv = document.createElement("div");
+                  itemDiv.classList.add("carrinho-item");
+                  itemDiv.innerHTML = `
+                                    <p><strong>Pizza:</strong> ${item.nome_pizza}</p>
+                                    <p><strong>Tipo:</strong> ${item.tipo_pizza}</p>
+                                    <p><strong>Preço:</strong> R$ ${item.preco}</p>
+                                    <p><strong>ID da Pizza:</strong> ${item.pizza_id}</p>
+                                `;
+                  carrinhoDiv.appendChild(itemDiv);
+                });
+              }
+            }
+          })
+          .catch((error) => {
+            carrinhoDiv.innerHTML = "<p>Erro ao carregar os dados.</p>";
+            console.error(error);
+          });
+      }
+    </script>
+  </body>
+</html>
