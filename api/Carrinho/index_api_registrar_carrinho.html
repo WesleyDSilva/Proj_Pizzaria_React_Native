@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adicionar Pizza ao Carrinho</title>
+  </head>
+  <body>
+    <h2>Adicionar Pizza ao Carrinho</h2>
+
+    <label for="cliente_id">ID do Cliente:</label>
+    <input type="number" id="cliente_id" required />
+
+    <label for="pizza_id">ID da Pizza:</label>
+    <input type="number" id="pizza_id" required />
+
+    <label for="preco">Preço:</label>
+    <input type="text" id="preco" required />
+
+    <label for="nome_pizza">Nome da Pizza:</label>
+    <input type="text" id="nome_pizza" required />
+
+    <label for="tipo_pizza">Tipo da Pizza:</label>
+    <select id="tipo_pizza">
+      <option value="inteira">Inteira</option>
+      <option value="meia">Meia</option>
+    </select>
+
+    <button onclick="adicionarAoCarrinho()">Adicionar</button>
+
+    <p id="mensagem"></p>
+
+    <script>
+      async function adicionarAoCarrinho() {
+        const cliente_id = document.getElementById("cliente_id").value;
+        const pizza_id = document.getElementById("pizza_id").value;
+        const preco = document.getElementById("preco").value;
+        const nome_pizza = document.getElementById("nome_pizza").value;
+        const tipo_pizza = document.getElementById("tipo_pizza").value;
+        const mensagem = document.getElementById("mensagem");
+
+        if (!cliente_id || !pizza_id || !preco || !nome_pizza) {
+          mensagem.innerText = "Preencha todos os campos!";
+          mensagem.style.color = "red";
+          return;
+        }
+
+        const url = "api_registrar_carrinho.php"; // Atualize com a URL real da API
+        const dados = {
+          cliente_id: cliente_id,
+          pizza_id: pizza_id,
+          preco: preco,
+          nome_pizza: nome_pizza,
+          tipo_pizza: tipo_pizza,
+        };
+
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(dados),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            mensagem.innerText = data.message;
+            mensagem.style.color = "green";
+          } else {
+            mensagem.innerText = data.message;
+            mensagem.style.color = "red";
+          }
+        } catch (error) {
+          mensagem.innerText = "Erro ao conectar com a API.";
+          mensagem.style.color = "red";
+        }
+      }
+    </script>
+  </body>
+</html>
