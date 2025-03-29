@@ -6,7 +6,7 @@ $username = 'wesley'; // Nome de usuário do banco de dados
 $password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 // Conexão com o banco de dados usando mysqli
-$conexao = mysqli_connect($host, $username, $password, $database);
+$conexao = mysqli_connect($host, $username, $password, $dbname);
 if (!$conexao) {
     echo json_encode(array(
         'error' => true,
