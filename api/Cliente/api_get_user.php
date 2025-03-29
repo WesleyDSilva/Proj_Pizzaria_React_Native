@@ -7,10 +7,10 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 
 // Configurações do banco de dados
-$host = 'devweb3sql.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
-$dbname = 'devweb3sql'; // Nome do banco de dados
-$username = 'devweb3sql'; // Nome de usuário do banco de dados
-$password = 'h2023_FaTEC#$'; // Senha do banco de dados
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 try {
     // Conectar ao banco de dados usando PDO

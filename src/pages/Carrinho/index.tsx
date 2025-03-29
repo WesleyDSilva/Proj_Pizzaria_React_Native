@@ -1,15 +1,23 @@
-import React, { useState, useContext, useCallback } from 'react'; 
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import React, {useState, useContext, useCallback} from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
-import { AuthContext } from '../../contexts/AuthContext';
-import { useCarrinho } from '../../contexts/CarrinhoContext';
-import { useFocusEffect } from '@react-navigation/native';
-import { CarrinhoItem } from '../../contexts/CarrinhoItem';
+import {AuthContext} from '../../contexts/AuthContext';
+import {useCarrinho} from '../../contexts/CarrinhoContext';
+import {useFocusEffect} from '@react-navigation/native';
+import {CarrinhoItem} from '../../contexts/CarrinhoItem';
 
 const Carrinho = () => {
-  const { user } = useContext(AuthContext);
-  const { carrinho, setCarrinho, removerPizza } = useCarrinho();
+  const {user} = useContext(AuthContext);
+  const {carrinho, setCarrinho, removerPizza} = useCarrinho();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,15 +25,15 @@ const Carrinho = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `https://devweb3.ok.etc.br/api/api_get_carrinho.php?cliente_id=${user.id}`
+        `https://devweb3.ok.etc.br/api/api_get_carrinho.php?cliente_id=${user.id}`,
       );
       const carrinhoData: CarrinhoItem[] = response.data.map((item: any) => ({
-        id: Number(item.id),
-        pizza_id: Number(item.pizza_id),
-        preco: parseFloat(item.preco),
+        id: Number(item.id), // Convertendo ID para número
+        pizza_id: Number(item.pizza_id), // Convertendo ID da pizza para número
+        preco: parseFloat(item.preco), // Convertendo preço para número
         nome_pizza: item.nome_pizza,
         tipo_pizza: item.tipo_pizza,
-        cliente_id: item.cliente_id ? Number(item.cliente_id) : undefined,
+        cliente_id: item.cliente_id ? Number(item.cliente_id) : undefined, // Convertendo ID do cliente
       }));
       setCarrinho(carrinhoData);
       setError(null);
@@ -42,11 +50,16 @@ const Carrinho = () => {
       if (user?.id) {
         fetchCarrinho();
       }
-    }, [user])
+    }, [user]),
   );
 
   const deleteItem = async (pizza_id: number, cliente_id: number) => {
-    console.log('Recebido para exclusão - Pizza ID:', pizza_id, 'Cliente ID:', cliente_id);
+    console.log(
+      'Recebido para exclusão - Pizza ID:',
+      pizza_id,
+      'Cliente ID:',
+      cliente_id,
+    );
     try {
       const idCliente = cliente_id || user.id; // Usa user.id se cliente_id não estiver disponível
 
@@ -65,6 +78,7 @@ const Carrinho = () => {
       if (response.data.success) {
         Alert.alert('Sucesso', 'Item excluído com sucesso');
         removerPizza(pizza_id); // Remover a pizza do carrinho localmente
+        fetchCarrinho();
       } else {
         Alert.alert('Erro', response.data.message || 'Erro ao excluir o item');
       }
@@ -83,17 +97,28 @@ const Carrinho = () => {
         preco: item.preco,
       };
 
-      if (!pizza.cliente_id || !pizza.pizza_id || !pizza.nome_pizza || !pizza.preco) {
+      if (
+        !pizza.cliente_id ||
+        !pizza.pizza_id ||
+        !pizza.nome_pizza ||
+        !pizza.preco
+      ) {
         Alert.alert('Erro', 'Campos obrigatórios não preenchidos');
         return;
       }
 
-      const response = await axios.post('https://devweb3.ok.etc.br/api/api_pedido_favorito.php', { pizzas: [pizza] });
+      const response = await axios.post(
+        'https://devweb3.ok.etc.br/api/api_pedido_favorito.php',
+        {pizzas: [pizza]},
+      );
 
       if (response.data.success) {
         Alert.alert('Sucesso', 'Pizza adicionada aos favoritos!');
       } else {
-        Alert.alert('Erro', response.data.message || 'Erro ao adicionar aos favoritos.');
+        Alert.alert(
+          'Erro',
+          response.data.message || 'Erro ao adicionar aos favoritos.',
+        );
       }
     } catch (error) {
       console.error('Erro ao adicionar aos favoritos:', error);
@@ -101,9 +126,10 @@ const Carrinho = () => {
     }
   };
 
-  const total = carrinho && carrinho.length > 0
-    ? carrinho.reduce((acc, item) => acc + item.preco, 0)
-    : 0;
+  const total =
+    carrinho && carrinho.length > 0
+      ? carrinho.reduce((acc, item) => acc + item.preco, 0)
+      : 0;
 
   if (loading) {
     return (
@@ -134,8 +160,8 @@ const Carrinho = () => {
       <Text style={styles.title}>Carrinho</Text>
       <FlatList
         data={carrinho}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
+        keyExtractor={item => item.id.toString()}
+        renderItem={({item}) => (
           <View style={styles.item}>
             <TouchableOpacity onPress={() => handleFavorite(item)}>
               <Icon name="heart" size={20} color="red" style={styles.icon} />
@@ -151,10 +177,21 @@ const Carrinho = () => {
               onPress={() => {
                 const clienteId = item.cliente_id ?? user.id; // Garantir que cliente_id seja um número
                 if (clienteId) {
-                  console.log('Enviando para exclusão - Cliente ID:', clienteId, 'Pizza ID:', item.pizza_id);
-                  deleteItem(item.pizza_id, clienteId); // Chama deleteItem
+                  console.log(
+                    'Enviando para exclusão - Cliente ID:',
+                    clienteId,
+                    'Pizza ID:',
+                    item.pizza_id,
+                  );
+                  deleteItem(
+                    Number(item.pizza_id),
+                    Number(item.cliente_id ?? user.id),
+                  );
+                  // Chama deleteItem
                 } else {
-                  console.log('Erro: Cliente ID não encontrado para a exclusão');
+                  console.log(
+                    'Erro: Cliente ID não encontrado para a exclusão',
+                  );
                   Alert.alert('Erro', 'ID do cliente não encontrado.');
                 }
               }}

@@ -1,9 +1,9 @@
 <?php
 // Conectar ao banco de dados
-$servername = "devweb3sql.mysql.dbaas.com.br";
-$username = "devweb3sql";
-$password = "h2023_FaTEC#$";
-$dbname = "devweb3sql";
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 
@@ -18,8 +18,10 @@ header('Content-Type: application/json');
 // Verificar se o método é GET  (This is still incorrect;  use DELETE)
 if ($_SERVER['REQUEST_METHOD'] === 'GET') { // Should be 'DELETE'
     // Obter os dados da requisição - parâmetros GET (This is also incorrect for DELETE)
-    if (isset($_GET['pizza_id']) && is_numeric($_GET['pizza_id']) &&
-        isset($_GET['cliente_id']) && is_numeric($_GET['cliente_id'])) {
+    if (
+        isset($_GET['pizza_id']) && is_numeric($_GET['pizza_id']) &&
+        isset($_GET['cliente_id']) && is_numeric($_GET['cliente_id'])
+    ) {
 
         $pizza_id = intval($_GET['pizza_id']);
         $cliente_id = intval($_GET['cliente_id']);

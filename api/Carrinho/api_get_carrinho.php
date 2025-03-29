@@ -7,10 +7,10 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 
 // Configurações do banco de dados
-$host = 'devweb3sql.mysql.dbaas.com.br';
-$dbname = 'devweb3sql';
-$username = 'devweb3sql';
-$password = 'h2023_FaTEC#$';
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 $conexao = mysqli_connect($host, $username, $password, $dbname);
 
@@ -47,7 +47,7 @@ if (isset($_GET['cliente_id']) && is_numeric($_GET['cliente_id'])) {
         }
 
         // Retornar os dados em formato JSON  - REMOVE THE SECOND PARAMETER
-        echo json_encode($usuarios); 
+        echo json_encode($usuarios);
     } else {
         // Caso não haja registros, retorna uma mensagem
         echo json_encode(array(

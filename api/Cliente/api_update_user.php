@@ -1,9 +1,9 @@
 <?php
 // Configurações do banco de dados
-$host = 'devweb3sql.mysql.dbaas.com.br'; // Substitua pelo endereço do seu servidor
-$dbname = 'devweb3sql'; // Substitua pelo nome do seu banco de dados
-$username = 'devweb3sql'; // Substitua pelo nome de usuário do banco
-$password = 'h2023_FaTEC#$'; // Substitua pela senha do banco
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 // Definir cabeçalhos para JSON UTF-8
 header('Content-Type: application/json; charset=utf-8');
