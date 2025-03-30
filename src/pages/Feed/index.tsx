@@ -5,6 +5,7 @@ const Feed = (): React.JSX.Element => {
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/Welcome_text.jpg')} />
+
       <Feed_Pizza />
     </View>
   );
