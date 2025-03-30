@@ -57,56 +57,48 @@ export default function Feed() {
     fetchPizzas();
   }, []);
 
-  // Handler para adicionar/incrementar meia pizza (usado pelos botões +/- da lista principal)
+  // --- Funções handleAddPizza, handleRemovePizza, handleConfirmAddition, handleCancelAddition ---
   const handleAddPizza = (pizza: Pizza) => {
     const currentQuantity = quantities[pizza.id] || 0;
 
     if (currentQuantity === 1) {
-      // Pergunta se quer adicionar a segunda metade (pizza inteira)
       setModalMessage(
         `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${
           (pizza.preco || 0) * 2
         }`,
       );
-      setSelectedPizzas([pizza]); // Seleciona a pizza para confirmação
+      setSelectedPizzas([pizza]);
       setModalVisible(true);
     } else if (selectedPizzas.length === 1) {
-      // Pergunta se quer adicionar a segunda metade (outra pizza)
       const previousPizza = selectedPizzas[0];
       setModalMessage(
         `Deseja adicionar meia ${previousPizza.nome} e meia ${
           pizza.nome
         }? Preço: R$ ${(previousPizza.preco || 0) + (pizza.preco || 0)}`,
       );
-      setSelectedPizzas([...selectedPizzas, pizza]); // Adiciona a segunda pizza selecionada
+      setSelectedPizzas([...selectedPizzas, pizza]);
       setModalVisible(true);
     } else {
-      // Adiciona a primeira metade
-      setQuantities(prev => ({...prev, [pizza.id]: 1})); // Define quantidade como 1
-      setSelectedPizzas([pizza]); // Seleciona a primeira pizza
-      // Não mostra modal aqui, só atualiza a quantidade visualmente
+      setQuantities(prev => ({...prev, [pizza.id]: 1}));
+      setSelectedPizzas([pizza]);
     }
   };
 
-  // Nova função para lidar com o clique direto no item do menu horizontal
   const handleMenuPizzaClick = (pizza: Pizza) => {
-    // Verifica se usuário está logado ANTES de mostrar o modal de confirmação
     if (!user.id) {
       setModalMessage('Você precisa estar logado para adicionar itens.');
-      setSelectedPizzas([]); // Limpa seleção anterior se houver
+      setSelectedPizzas([]);
       setModalVisible(true);
-      return; // Interrompe a função aqui
+      return;
     }
-
-    // Configura diretamente o modal para perguntar sobre a pizza INTEIRA
     setModalMessage(
       `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${
         (pizza.preco || 0) * 2
       }`,
     );
-    setSelectedPizzas([pizza]); // Define a pizza selecionada para confirmação
-    setQuantities({}); // Reseta quantidades temporárias ao iniciar nova seleção pelo menu
-    setModalVisible(true); // Mostra o modal
+    setSelectedPizzas([pizza]);
+    setQuantities({});
+    setModalVisible(true);
   };
 
   const handleRemovePizza = (pizza: Pizza) => {
@@ -116,7 +108,6 @@ export default function Feed() {
         ...prev,
         [pizza.id]: currentQuantity - 1,
       }));
-      // Se a quantidade for para zero e era a única selecionada, limpa seleção
       if (
         currentQuantity === 1 &&
         selectedPizzas.length === 1 &&
@@ -128,20 +119,12 @@ export default function Feed() {
   };
 
   const handleConfirmAddition = () => {
-    // A verificação de login já foi feita antes de abrir o modal de confirmação
-    // ou no início desta função caso o modal seja genérico (como o de "precisa logar")
     if (!user.id) {
-      // Esta verificação é redundante se o modal de login já foi tratado
-      // Mas é bom manter por segurança caso o fluxo mude
       setModalMessage(
         'Você precisa estar logado para adicionar itens ao carrinho.',
       );
-      // Garante que o modal correto seja fechado se necessário
-      // setModalVisible(true); // Não reabrir o mesmo modal
       return;
     }
-
-    // Se a mensagem for a de login, apenas feche o modal sem adicionar
     if (
       modalMessage === 'Você precisa estar logado para adicionar itens.' ||
       modalMessage ===
@@ -153,12 +136,8 @@ export default function Feed() {
       return;
     }
 
-    // Lógica original de confirmação - funciona para 1 ou 2 pizzas selecionadas
     selectedPizzas.forEach(pizza => {
-      // Determina se é inteira (1 item selecionado) ou meia (2 itens selecionados)
-      // A lógica aqui está correta vindo do handleAddPizza ou handleMenuPizzaClick
       const tipoPizza = selectedPizzas.length === 1 ? 'inteira' : 'meia';
-      // Preço: inteiro (preco*2) ou meia (preco individual)
       const precoFinal =
         tipoPizza === 'inteira' ? (pizza.preco || 0) * 2 : pizza.preco || 0;
 
@@ -168,7 +147,7 @@ export default function Feed() {
           pizza_id: pizza.id,
           preco: precoFinal,
           nome_pizza: pizza.nome,
-          tipo_pizza: tipoPizza, // 'inteira' ou 'meia'
+          tipo_pizza: tipoPizza,
         })
         .then(response => {
           console.log('Pizza registrada no carrinho:', response.data);
@@ -178,7 +157,6 @@ export default function Feed() {
         });
     });
 
-    // Limpa estado após adicionar ao carrinho
     setModalVisible(false);
     setQuantities({});
     setSelectedPizzas([]);
@@ -186,7 +164,6 @@ export default function Feed() {
 
   const handleCancelAddition = () => {
     setModalVisible(false);
-    // Só reseta a seleção se não for o modal de "precisa logar"
     if (
       modalMessage !== 'Você precisa estar logado para adicionar itens.' &&
       modalMessage !==
@@ -225,11 +202,9 @@ export default function Feed() {
 
   // Render item para a lista horizontal (menu) - Chama handleMenuPizzaClick
   const renderMenuItem = ({item}: {item: Pizza}) => (
-    // TouchableOpacity externo chama a nova função
     <TouchableOpacity
       style={styles.menuItemOuterContainer}
-      onPress={() => handleMenuPizzaClick(item)} // Chama a função específica do menu
-    >
+      onPress={() => handleMenuPizzaClick(item)}>
       <View style={styles.menuItemImageBackground}>
         <Image
           source={{uri: item.caminho}}
@@ -274,7 +249,7 @@ export default function Feed() {
             horizontal={true}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.menuList}
-            renderItem={renderMenuItem} // Renderiza o item do menu
+            renderItem={renderMenuItem}
             ListEmptyComponent={
               <Text style={styles.emptyMenu}>Carregando pizzas...</Text>
             }
@@ -282,9 +257,21 @@ export default function Feed() {
         )}
       </View>
 
+      {/* --- BANNER --- */}
+      <View style={styles.banner}>
+        <Image
+          source={require('../../assets/banner.png')}
+          style={styles.bannerImage} // Aplicando estilo à imagem do banner
+          onError={e =>
+            console.log('Erro ao carregar banner:', e.nativeEvent.error)
+          } // Verificar erro de carregamento
+        />
+      </View>
+      {/* --- FIM BANNER --- */}
+
       {loading && pizzas.length === 0 ? (
         <ActivityIndicator
-          style={{marginTop: 50}}
+          style={{marginTop: 20}} // Reduzido marginTop devido ao banner
           size="large"
           color="#0000ff"
         />
@@ -292,7 +279,7 @@ export default function Feed() {
         <FlatList
           data={filteredPizzas}
           keyExtractor={item => `main-${item.id.toString()}`}
-          renderItem={renderItem} // Renderiza o item da lista principal
+          renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty}>
@@ -304,7 +291,7 @@ export default function Feed() {
         />
       )}
 
-      {/* Modal - Agora lida com diferentes mensagens */}
+      {/* Modal */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -314,7 +301,6 @@ export default function Feed() {
           <View style={styles.modalContent}>
             <Text style={styles.modalMessage}>{modalMessage}</Text>
             <View style={styles.modalButtons}>
-              {/* Só mostra botão Adicionar se não for a mensagem de login */}
               {modalMessage !==
                 'Você precisa estar logado para adicionar itens.' &&
                 modalMessage !==
@@ -325,7 +311,6 @@ export default function Feed() {
                     color="#FFA500"
                   />
                 )}
-              {/* Espaçador só aparece se o botão Adicionar estiver visível */}
               {modalMessage !==
                 'Você precisa estar logado para adicionar itens.' &&
                 modalMessage !==
@@ -333,7 +318,6 @@ export default function Feed() {
                   <View style={{width: 10}} />
                 )}
               <Button
-                // Muda o texto do botão Cancelar para OK se for só uma mensagem informativa
                 title={
                   modalMessage ===
                     'Você precisa estar logado para adicionar itens.' ||
@@ -353,7 +337,7 @@ export default function Feed() {
   );
 }
 
-// --- Estilos (mantidos da versão anterior) ---
+// --- Estilos ---
 const IMAGE_SIZE = 55;
 const BORDER_WIDTH = 2;
 const IMAGE_WITH_BORDER_SIZE = IMAGE_SIZE + BORDER_WIDTH * 2;
@@ -396,6 +380,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 10,
     backgroundColor: '#f8f8f8',
+    marginBottom: 5, // Reduzido espaço antes do banner
   },
   menuList: {
     paddingHorizontal: 10,
@@ -438,10 +423,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     color: '#999',
   },
+  // Estilo para o container do Banner
+  banner: {
+    width: '100%', // Ocupa toda a largura disponível
+    alignItems: 'center', // Centraliza o conteúdo (Image) horizontalmente
+    paddingVertical: 10, // Espaçamento vertical (ajuste conforme necessário)
+    // justifyContent: 'center', // Centraliza verticalmente dentro do padding (opcional)
+    marginBottom: 10, // Espaço abaixo do banner
+    marginLeft: 6,
+  },
+  // Estilo para a Imagem do Banner (opcional, mas recomendado)
+  bannerImage: {
+    width: '95%', // Exemplo: 95% da largura do container
+    // height: 150, // Defina uma altura ou use aspectRatio
+    height: undefined, // Necessário para aspectRatio funcionar corretamente
+    aspectRatio: 16 / 6, // Exemplo de proporção (ajuste para a proporção real da sua imagem)
+    resizeMode: 'contain', // Ou 'cover', 'stretch'
+    borderRadius: 8, // Opcional: bordas arredondadas
+  },
   list: {
     width: '100%',
     paddingHorizontal: 16,
     paddingBottom: 20,
+    // paddingTop: 10, // Adiciona espaço acima da lista principal
   },
   itemContainer: {
     padding: 16,
