@@ -52,19 +52,16 @@ const Carrinho = () => {
         `https://devweb3.ok.etc.br/api/api_get_carrinho.php?cliente_id=${user.id}`,
       );
       if (Array.isArray(response.data)) {
-        // Dados brutos da API
         const rawData: any[] = response.data;
-        // Mapeia e garante a tipagem correta para CarrinhoItem
         const carrinhoData: CarrinhoItem[] = rawData.map((item: any) => ({
           id: Number(item.id),
           pizza_id: Number(item.pizza_id),
           preco: parseFloat(item.preco) || 0,
           nome_pizza: item.nome_pizza || 'Pizza Desconhecida',
           tipo_pizza: item.tipo_pizza || 'N/A',
-          // *** CORREÇÃO DO TIPO cliente_id ***
           cliente_id: user.id ? Number(user.id) : undefined,
         }));
-        setCarrinho(carrinhoData); // Atualiza o contexto
+        setCarrinho(carrinhoData);
       } else {
         console.warn('Resposta da API não é um array:', response.data);
         setCarrinho([]);
@@ -85,7 +82,6 @@ const Carrinho = () => {
     }, [fetchCarrinho]),
   );
 
-  // Agrupamento dos itens do carrinho
   const gruposCarrinho = useMemo(() => {
     const grupos: Map<string, GrupoCarrinhoItem> = new Map();
     carrinho.forEach(item => {
@@ -94,7 +90,7 @@ const Carrinho = () => {
         const grupoExistente = grupos.get(groupKey)!;
         grupoExistente.quantidade += 1;
         grupoExistente.precoTotalGrupo += item.preco || 0;
-        // Não atualizamos primeiroItemId aqui, mantemos o do primeiro
+        // Mantemos o primeiroItemId do primeiro item encontrado
       } else {
         grupos.set(groupKey, {
           key: groupKey,
@@ -104,14 +100,13 @@ const Carrinho = () => {
           precoUnitario: item.preco || 0,
           quantidade: 1,
           precoTotalGrupo: item.preco || 0,
-          primeiroItemId: item.id,
+          primeiroItemId: item.id, // Guarda o ID do primeiro
         });
       }
     });
     return Array.from(grupos.values());
   }, [carrinho]);
 
-  // Cálculo do total
   const total = useMemo(
     () => gruposCarrinho.reduce((acc, grupo) => acc + grupo.precoTotalGrupo, 0),
     [gruposCarrinho],
@@ -119,6 +114,7 @@ const Carrinho = () => {
 
   // --- Handlers ---
 
+  // Função para ADICIONAR um novo item (incremento visual)
   const handleIncrementItem = async (grupo: GrupoCarrinhoItem) => {
     if (!user?.id) {
       Alert.alert('Erro', 'Você precisa estar logado.');
@@ -127,9 +123,9 @@ const Carrinho = () => {
     setItemLoading(prev => ({...prev, [grupo.key]: true}));
     try {
       const response = await axios.post(
-        'https://devweb3.ok.etc.br/api/api_registrar_carrinho.php',
+        'https://devweb3.ok.etc.br/api/api_registrar_carrinho.php', // API de registro
         {
-          cliente_id: Number(user.id), // Converte para número
+          cliente_id: Number(user.id),
           pizza_id: grupo.pizza_id,
           preco: grupo.precoUnitario,
           nome_pizza: grupo.nome_pizza,
@@ -137,7 +133,7 @@ const Carrinho = () => {
         },
       );
       if (response.data.success || response.status === 200) {
-        await fetchCarrinho();
+        await fetchCarrinho(); // Recarrega para obter o novo item com seu ID
       } else {
         Alert.alert(
           'Erro',
@@ -152,32 +148,58 @@ const Carrinho = () => {
     }
   };
 
+  // Função para REMOVER UM item (decremento visual)
   const handleDecrementItem = async (grupo: GrupoCarrinhoItem) => {
     if (!user?.id) {
       Alert.alert('Erro', 'Você precisa estar logado.');
       return;
     }
-    if (grupo.quantidade <= 0) return;
+    if (grupo.quantidade <= 0) return; // Não faz nada se a quantidade já for 0
 
-    const itemIdToRemove = grupo.primeiroItemId; // ID único a ser removido
+    // Encontra UM ID de item correspondente no carrinho original
+    const itemParaRemover = carrinho.find(
+      item =>
+        item.pizza_id === grupo.pizza_id &&
+        item.tipo_pizza === grupo.tipo_pizza,
+    );
+
+    if (!itemParaRemover) {
+      console.error(
+        `Não foi possível encontrar um item no carrinho para o grupo ${grupo.key}`,
+      );
+      Alert.alert('Erro', 'Erro ao tentar remover o item.');
+      return;
+    }
+
+    const itemIdToRemove = itemParaRemover.id; // ID ÚNICO A SER REMOVIDO
+
     setItemLoading(prev => ({...prev, [grupo.key]: true}));
     try {
-      // *** AJUSTE A URL SE NECESSÁRIO PARA REMOVER POR ID ÚNICO ***
+      // *** CHAMA A API CORRETA QUE REMOVE POR ID ÚNICO ***
       const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho_item.php?id=${itemIdToRemove}`;
+      console.log('Chamando API de remoção de item:', url); // Log para depuração
       const response = await axios.get(url);
+
       if (response.data.success || response.status === 200) {
-        removerPizza(itemIdToRemove); // Remove do contexto pelo ID único
+        // Remove do contexto pelo ID ÚNICO
+        removerPizza(itemIdToRemove);
+        console.log(`Item ${itemIdToRemove} removido com sucesso.`);
       } else {
-        Alert.alert('Erro', response.data.message || 'Erro ao remover.');
+        console.error('Erro da API ao remover item:', response.data);
+        Alert.alert(
+          'Erro',
+          response.data.message || 'Erro ao remover o item da API.',
+        );
       }
     } catch (err) {
-      console.error('Erro ao decrementar item:', err);
-      Alert.alert('Erro', 'Não foi possível remover.');
+      console.error('Erro de rede/axios ao decrementar item:', err);
+      Alert.alert('Erro', 'Não foi possível remover o item.');
     } finally {
       setItemLoading(prev => ({...prev, [grupo.key]: false}));
     }
   };
 
+  // Função para remover TODOS de um tipo (usado pela lixeira)
   const handleDeleteAllOfType = async (
     pizza_id: number,
     nome_pizza: string,
@@ -197,9 +219,10 @@ const Carrinho = () => {
           onPress: async () => {
             setDeletingAllType(pizza_id);
             try {
+              // Chama a API que remove TODAS pelo pizza_id
               const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho.php?pizza_id=${pizza_id}&cliente_id=${Number(
                 user.id,
-              )}`; // Converte para número
+              )}`;
               const response = await axios.get(url);
               if (response.data.success || response.status === 200) {
                 removerTodasAsPizzasDoTipo(pizza_id); // Remove do contexto pelo pizza_id
@@ -225,6 +248,7 @@ const Carrinho = () => {
     );
   };
 
+  // handleFavorite
   const handleFavorite = async (grupo: GrupoCarrinhoItem) => {
     if (!user?.id) {
       Alert.alert('Erro', 'Você precisa estar logado.');
@@ -232,7 +256,7 @@ const Carrinho = () => {
     }
     try {
       const pizza = {
-        cliente_id: Number(user.id), // Converte para número
+        cliente_id: Number(user.id),
         pizza_id: grupo.pizza_id,
         nome_pizza: grupo.nome_pizza,
         preco: grupo.precoUnitario,
@@ -294,9 +318,9 @@ const Carrinho = () => {
     <View style={styles.container}>
       <Text style={styles.title}>MEU CARRINHO</Text>
       <FlatList
-        data={gruposCarrinho} // Usa os grupos
-        extraData={carrinho} // Re-renderiza se o carrinho original mudar
-        keyExtractor={item => item.key} // Usa a chave do grupo
+        data={gruposCarrinho}
+        extraData={carrinho}
+        keyExtractor={item => item.key}
         renderItem={({item: grupo}) => (
           <View style={styles.itemContainer}>
             <View style={[styles.triangle, styles.topLeftTriangle]} />
@@ -333,9 +357,8 @@ const Carrinho = () => {
               <View style={styles.quantityControls}>
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() =>
-                    grupo.quantidade > 0 && handleDecrementItem(grupo)
-                  }
+                  // *** CHAMA A FUNÇÃO CORRETA handleDecrementItem ***
+                  onPress={() => handleDecrementItem(grupo)}
                   disabled={
                     itemLoading[grupo.key] ||
                     deletingAllType === grupo.pizza_id ||
@@ -375,7 +398,7 @@ const Carrinho = () => {
                   style={styles.trashButton}
                   onPress={() =>
                     handleDeleteAllOfType(grupo.pizza_id, grupo.nome_pizza)
-                  }
+                  } // Mantém esta chamada para o trash
                   disabled={
                     deletingAllType === grupo.pizza_id || itemLoading[grupo.key]
                   }>
@@ -406,7 +429,7 @@ const Carrinho = () => {
   );
 };
 
-// --- Estilos ---
+// --- Estilos (sem alterações desde a última versão) ---
 const TRIANGLE_SIZE = 15;
 
 const styles = StyleSheet.create({
