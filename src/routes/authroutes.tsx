@@ -4,6 +4,8 @@ import Cadastro from '../pages/Cadastro';
 
 import SignIn from '../pages/SignIn';
 //import Cadastro from "../pages/Cadastro"; // Certifique-se de que esta importação esteja correta
+import Pedidos from '../pages/Pedidos';
+import Detalhes from '../pages/Pedidos/Detalhes';
 
 const Stack = createNativeStackNavigator();
 
