@@ -57,31 +57,56 @@ export default function Feed() {
     fetchPizzas();
   }, []);
 
-  // --- Funções handleAddPizza, handleRemovePizza, handleConfirmAddition, handleCancelAddition ---
+  // Handler para adicionar/incrementar meia pizza (usado pelos botões +/- da lista principal)
   const handleAddPizza = (pizza: Pizza) => {
     const currentQuantity = quantities[pizza.id] || 0;
 
     if (currentQuantity === 1) {
+      // Pergunta se quer adicionar a segunda metade (pizza inteira)
       setModalMessage(
         `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${
           (pizza.preco || 0) * 2
         }`,
       );
-      setSelectedPizzas([pizza]);
+      setSelectedPizzas([pizza]); // Seleciona a pizza para confirmação
       setModalVisible(true);
     } else if (selectedPizzas.length === 1) {
+      // Pergunta se quer adicionar a segunda metade (outra pizza)
       const previousPizza = selectedPizzas[0];
       setModalMessage(
         `Deseja adicionar meia ${previousPizza.nome} e meia ${
           pizza.nome
         }? Preço: R$ ${(previousPizza.preco || 0) + (pizza.preco || 0)}`,
       );
-      setSelectedPizzas([...selectedPizzas, pizza]);
+      setSelectedPizzas([...selectedPizzas, pizza]); // Adiciona a segunda pizza selecionada
       setModalVisible(true);
     } else {
-      setQuantities(prev => ({...prev, [pizza.id]: currentQuantity + 1}));
-      setSelectedPizzas([pizza]);
+      // Adiciona a primeira metade
+      setQuantities(prev => ({...prev, [pizza.id]: 1})); // Define quantidade como 1
+      setSelectedPizzas([pizza]); // Seleciona a primeira pizza
+      // Não mostra modal aqui, só atualiza a quantidade visualmente
     }
+  };
+
+  // Nova função para lidar com o clique direto no item do menu horizontal
+  const handleMenuPizzaClick = (pizza: Pizza) => {
+    // Verifica se usuário está logado ANTES de mostrar o modal de confirmação
+    if (!user.id) {
+      setModalMessage('Você precisa estar logado para adicionar itens.');
+      setSelectedPizzas([]); // Limpa seleção anterior se houver
+      setModalVisible(true);
+      return; // Interrompe a função aqui
+    }
+
+    // Configura diretamente o modal para perguntar sobre a pizza INTEIRA
+    setModalMessage(
+      `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${
+        (pizza.preco || 0) * 2
+      }`,
+    );
+    setSelectedPizzas([pizza]); // Define a pizza selecionada para confirmação
+    setQuantities({}); // Reseta quantidades temporárias ao iniciar nova seleção pelo menu
+    setModalVisible(true); // Mostra o modal
   };
 
   const handleRemovePizza = (pizza: Pizza) => {
@@ -91,22 +116,51 @@ export default function Feed() {
         ...prev,
         [pizza.id]: currentQuantity - 1,
       }));
+      // Se a quantidade for para zero e era a única selecionada, limpa seleção
+      if (
+        currentQuantity === 1 &&
+        selectedPizzas.length === 1 &&
+        selectedPizzas[0].id === pizza.id
+      ) {
+        setSelectedPizzas([]);
+      }
     }
   };
 
   const handleConfirmAddition = () => {
+    // A verificação de login já foi feita antes de abrir o modal de confirmação
+    // ou no início desta função caso o modal seja genérico (como o de "precisa logar")
     if (!user.id) {
+      // Esta verificação é redundante se o modal de login já foi tratado
+      // Mas é bom manter por segurança caso o fluxo mude
       setModalMessage(
         'Você precisa estar logado para adicionar itens ao carrinho.',
       );
-      setModalVisible(true);
+      // Garante que o modal correto seja fechado se necessário
+      // setModalVisible(true); // Não reabrir o mesmo modal
       return;
     }
 
+    // Se a mensagem for a de login, apenas feche o modal sem adicionar
+    if (
+      modalMessage === 'Você precisa estar logado para adicionar itens.' ||
+      modalMessage ===
+        'Você precisa estar logado para adicionar itens ao carrinho.'
+    ) {
+      setModalVisible(false);
+      setSelectedPizzas([]);
+      setQuantities({});
+      return;
+    }
+
+    // Lógica original de confirmação - funciona para 1 ou 2 pizzas selecionadas
     selectedPizzas.forEach(pizza => {
-      const tipoPizza = selectedPizzas.length > 1 ? 'meia' : 'inteira';
+      // Determina se é inteira (1 item selecionado) ou meia (2 itens selecionados)
+      // A lógica aqui está correta vindo do handleAddPizza ou handleMenuPizzaClick
+      const tipoPizza = selectedPizzas.length === 1 ? 'inteira' : 'meia';
+      // Preço: inteiro (preco*2) ou meia (preco individual)
       const precoFinal =
-        tipoPizza === 'inteira' ? pizza.preco * 2 : pizza.preco;
+        tipoPizza === 'inteira' ? (pizza.preco || 0) * 2 : pizza.preco || 0;
 
       axios
         .post('https://devweb3.ok.etc.br/api/api_registrar_carrinho.php', {
@@ -114,7 +168,7 @@ export default function Feed() {
           pizza_id: pizza.id,
           preco: precoFinal,
           nome_pizza: pizza.nome,
-          tipo_pizza: tipoPizza,
+          tipo_pizza: tipoPizza, // 'inteira' ou 'meia'
         })
         .then(response => {
           console.log('Pizza registrada no carrinho:', response.data);
@@ -124,6 +178,7 @@ export default function Feed() {
         });
     });
 
+    // Limpa estado após adicionar ao carrinho
     setModalVisible(false);
     setQuantities({});
     setSelectedPizzas([]);
@@ -131,8 +186,15 @@ export default function Feed() {
 
   const handleCancelAddition = () => {
     setModalVisible(false);
-    setQuantities({});
-    setSelectedPizzas([]);
+    // Só reseta a seleção se não for o modal de "precisa logar"
+    if (
+      modalMessage !== 'Você precisa estar logado para adicionar itens.' &&
+      modalMessage !==
+        'Você precisa estar logado para adicionar itens ao carrinho.'
+    ) {
+      setQuantities({});
+      setSelectedPizzas([]);
+    }
   };
 
   const filteredPizzas = pizzas.filter(pizza =>
@@ -161,15 +223,17 @@ export default function Feed() {
     </View>
   );
 
-  // Render item para a lista horizontal (menu) - COM IMAGEM e fundo laranja SÓ em volta da imagem
+  // Render item para a lista horizontal (menu) - Chama handleMenuPizzaClick
   const renderMenuItem = ({item}: {item: Pizza}) => (
-    // TouchableOpacity externo para área de clique total
-    <TouchableOpacity style={styles.menuItemOuterContainer}>
-      {/* View que tem o fundo laranja e é o círculo */}
+    // TouchableOpacity externo chama a nova função
+    <TouchableOpacity
+      style={styles.menuItemOuterContainer}
+      onPress={() => handleMenuPizzaClick(item)} // Chama a função específica do menu
+    >
       <View style={styles.menuItemImageBackground}>
         <Image
           source={{uri: item.caminho}}
-          style={styles.menuItemImage} // Imagem com sua borda
+          style={styles.menuItemImage}
           onError={e =>
             console.log(
               `Erro ao carregar imagem (menu) ${item.caminho}:`,
@@ -178,7 +242,6 @@ export default function Feed() {
           }
         />
       </View>
-      {/* Texto abaixo do círculo laranja */}
       <Text style={styles.menuItemText}>{item.nome}</Text>
     </TouchableOpacity>
   );
@@ -211,7 +274,7 @@ export default function Feed() {
             horizontal={true}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.menuList}
-            renderItem={renderMenuItem}
+            renderItem={renderMenuItem} // Renderiza o item do menu
             ListEmptyComponent={
               <Text style={styles.emptyMenu}>Carregando pizzas...</Text>
             }
@@ -229,7 +292,7 @@ export default function Feed() {
         <FlatList
           data={filteredPizzas}
           keyExtractor={item => `main-${item.id.toString()}`}
-          renderItem={renderItem}
+          renderItem={renderItem} // Renderiza o item da lista principal
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty}>
@@ -241,6 +304,7 @@ export default function Feed() {
         />
       )}
 
+      {/* Modal - Agora lida com diferentes mensagens */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -250,14 +314,34 @@ export default function Feed() {
           <View style={styles.modalContent}>
             <Text style={styles.modalMessage}>{modalMessage}</Text>
             <View style={styles.modalButtons}>
+              {/* Só mostra botão Adicionar se não for a mensagem de login */}
+              {modalMessage !==
+                'Você precisa estar logado para adicionar itens.' &&
+                modalMessage !==
+                  'Você precisa estar logado para adicionar itens ao carrinho.' && (
+                  <Button
+                    title="Adicionar"
+                    onPress={handleConfirmAddition}
+                    color="#FFA500"
+                  />
+                )}
+              {/* Espaçador só aparece se o botão Adicionar estiver visível */}
+              {modalMessage !==
+                'Você precisa estar logado para adicionar itens.' &&
+                modalMessage !==
+                  'Você precisa estar logado para adicionar itens ao carrinho.' && (
+                  <View style={{width: 10}} />
+                )}
               <Button
-                title="Adicionar"
-                onPress={handleConfirmAddition}
-                color="#FFA500"
-              />
-              <View style={{width: 10}} />
-              <Button
-                title="Cancelar"
+                // Muda o texto do botão Cancelar para OK se for só uma mensagem informativa
+                title={
+                  modalMessage ===
+                    'Você precisa estar logado para adicionar itens.' ||
+                  modalMessage ===
+                    'Você precisa estar logado para adicionar itens ao carrinho.'
+                    ? 'OK'
+                    : 'Cancelar'
+                }
                 onPress={handleCancelAddition}
                 color="#ff6347"
               />
@@ -269,10 +353,9 @@ export default function Feed() {
   );
 }
 
-// --- Estilos ---
+// --- Estilos (mantidos da versão anterior) ---
 const IMAGE_SIZE = 55;
 const BORDER_WIDTH = 2;
-// Tamanho total da imagem com sua borda
 const IMAGE_WITH_BORDER_SIZE = IMAGE_SIZE + BORDER_WIDTH * 2;
 
 const styles = StyleSheet.create({
@@ -316,52 +399,45 @@ const styles = StyleSheet.create({
   },
   menuList: {
     paddingHorizontal: 10,
-    alignItems: 'flex-start', // Alinha os itens no início do eixo cruzado (vertical)
+    alignItems: 'flex-start',
   },
-  // Container externo para cada item do menu (TouchableOpacity)
   menuItemOuterContainer: {
-    alignItems: 'center', // Centraliza o círculo laranja e o texto abaixo dele
-    marginHorizontal: 8, // Espaço entre os itens completos
-    minWidth: IMAGE_WITH_BORDER_SIZE + 10, // Largura mínima baseada no círculo
+    alignItems: 'center',
+    marginHorizontal: 8,
+    minWidth: IMAGE_WITH_BORDER_SIZE + 10,
   },
-  // View que tem o fundo laranja e forma o círculo
   menuItemImageBackground: {
-    width: IMAGE_WITH_BORDER_SIZE, // Deve ser o tamanho da imagem + bordas
+    width: IMAGE_WITH_BORDER_SIZE,
     height: IMAGE_WITH_BORDER_SIZE,
-    borderRadius: IMAGE_WITH_BORDER_SIZE / 2, // Metade do tamanho para ser círculo
-    backgroundColor: '#FFA500', // Fundo laranja
-    justifyContent: 'center', // Centraliza a imagem dentro
-    alignItems: 'center', // Centraliza a imagem dentro
-    marginBottom: 5, // Espaço entre o círculo laranja e o texto
-    // Adiciona sombra se desejar
+    borderRadius: IMAGE_WITH_BORDER_SIZE / 2,
+    backgroundColor: '#FFA500',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
   },
-  // Estilo da imagem (dentro do círculo laranja)
   menuItemImage: {
-    width: IMAGE_SIZE, // Tamanho da imagem
+    width: IMAGE_SIZE,
     height: IMAGE_SIZE,
-    borderRadius: IMAGE_SIZE / 2, // Imagem redonda
-    borderWidth: BORDER_WIDTH, // Borda branca na imagem
+    borderRadius: IMAGE_SIZE / 2,
+    borderWidth: BORDER_WIDTH,
     borderColor: '#fff',
-    // Não precisa de margin aqui
   },
-  // Estilo do texto (abaixo do círculo laranja)
   menuItemText: {
-    color: '#555', // Cor do texto pode ser ajustada
-    fontSize: 13, // Tamanho da fonte
+    color: '#555',
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: 2, // Pequeno espaço acima do texto
+    marginTop: 2,
   },
   emptyMenu: {
     paddingHorizontal: 20,
     color: '#999',
   },
-  // Estilos Lista Principal (SEM IMAGEM e layout original)
   list: {
     width: '100%',
     paddingHorizontal: 16,
@@ -417,7 +493,6 @@ const styles = StyleSheet.create({
     marginTop: 50,
     paddingHorizontal: 20,
   },
-  // Estilos Modal
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
