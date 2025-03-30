@@ -7,13 +7,14 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
+  Image,
   Button,
+  TextInput, // Importando o TextInput para a barra de busca
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
 import {useCarrinho} from '../../contexts/CarrinhoContext';
 import {AuthContext} from '../../contexts/AuthContext';
-import {Image} from 'react-native';
 
 // Definindo o tipo dos dados da API
 interface Pizza {
@@ -32,6 +33,7 @@ export default function Feed() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>(''); // Estado para armazenar o texto da busca
 
   useEffect(() => {
     const fetchPizzas = async () => {
@@ -134,6 +136,11 @@ export default function Feed() {
     setSelectedPizzas([]);
   };
 
+  // Função para filtrar as pizzas com base no texto de pesquisa
+  const filteredPizzas = pizzas.filter(pizza =>
+    pizza.nome.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
   const renderItem = ({item}: {item: Pizza}) => (
     <View style={styles.itemContainer}>
       <View style={styles.row}>
@@ -157,12 +164,38 @@ export default function Feed() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Feed</Text>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Busque por nome da pizza..."
+          value={searchQuery}
+          onChangeText={setSearchQuery} // Atualiza o estado da pesquisa
+        />
+        <View style={styles.iconContainer}>
+          <Icon name="search" size={20} color="#000000" style={styles.icon} />
+        </View>
+      </View>
+
+      <View style={styles.menuContainer}>
+        <FlatList
+          data={pizzas} // Mostra todas as pizzas sem filtro
+          keyExtractor={item => item.id.toString()}
+          horizontal={true} // Faz a lista rolar horizontalmente
+          showsHorizontalScrollIndicator={false} // Esconde a barra de rolagem
+          contentContainerStyle={styles.menuList}
+          renderItem={({item}) => (
+            <TouchableOpacity style={styles.menuItem}>
+              <Text style={styles.menuItemText}>{item.nome}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
         <FlatList
-          data={pizzas}
+          data={filteredPizzas} // Usa a lista filtrada
           keyExtractor={item => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
@@ -207,6 +240,41 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+  searchContainer: {
+    flexDirection: 'row', // Garante que o campo de busca e o ícone fiquem na mesma linha
+    alignItems: 'center',
+    width: '90%',
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 50,
+    paddingLeft: 10,
+    paddingRight: 10,
+  },
+  searchInput: {
+    flex: 1, // Faz o campo de texto ocupar o máximo de espaço disponível
+    height: '100%',
+  },
+  searchIcon: {
+    position: 'absolute',
+    right: 10, // Posiciona o ícone no lado direito
+  },
+  iconContainer: {
+    position: 'relative', // Faz o ícone ser posicionado dentro do círculo
+    backgroundColor: '#FFA500', // Cor laranja
+    borderRadius: 20, // Forma o círculo
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 30, // Define o tamanho do círculo
+    height: 30, // Define o tamanho do círculo
+    marginLeft: 10,
+  },
+  icon: {
+    position: 'absolute', // Posiciona o ícone dentro do círculo
+    top: '50%', // Coloca o ícone no meio do círculo
+    left: '50%', // Coloca o ícone no meio do círculo
+    transform: [{translateX: -10}, {translateY: -10}], // Ajusta o ícone para ficar centralizado
   },
   list: {
     width: '100%',
@@ -270,5 +338,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
+    marginBottom: 20,
+  },
+  menuContainer: {
+    width: '100%',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    backgroundColor: '#f8f8f8',
+  },
+  menuList: {
+    paddingHorizontal: 10,
+  },
+  menuItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFA500',
+    borderRadius: 20,
+    marginHorizontal: 5,
+  },
+  menuItemText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
