@@ -2,12 +2,12 @@ import React, {useEffect, useState, useContext} from 'react';
 import {
   StyleSheet,
   Text,
-  View,
+  View, // View é necessária
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
   Modal,
-  Image, // Importação necessária para a imagem no menu
+  Image,
   Button,
   TextInput,
 } from 'react-native';
@@ -16,13 +16,13 @@ import axios from 'axios';
 import {useCarrinho} from '../../contexts/CarrinhoContext';
 import {AuthContext} from '../../contexts/AuthContext';
 
-// Definindo o tipo dos dados da API - COM o campo 'caminho'
+// Interface Pizza
 interface Pizza {
   id: number;
   nome: string;
   descricao: string;
   preco: number;
-  caminho: string; // Adicionado para a URL da imagem
+  caminho: string;
 }
 
 export default function Feed() {
@@ -39,11 +39,9 @@ export default function Feed() {
   useEffect(() => {
     const fetchPizzas = async () => {
       try {
-        // Usando a interface atualizada com 'caminho'
         const response = await axios.get<Pizza[]>(
           'https://devweb3.ok.etc.br/api/api_get_pizzas.php',
         );
-        // Mapeando apenas para converter o preço, mantendo 'caminho'
         const pizzasComDadosCorrigidos = response.data.map(pizza => ({
           ...pizza,
           preco: parseFloat(pizza.preco as unknown as string) || 0,
@@ -59,7 +57,7 @@ export default function Feed() {
     fetchPizzas();
   }, []);
 
-  // --- Funções handleAddPizza, handleRemovePizza, handleConfirmAddition, handleCancelAddition permanecem iguais ---
+  // --- Funções handleAddPizza, handleRemovePizza, handleConfirmAddition, handleCancelAddition ---
   const handleAddPizza = (pizza: Pizza) => {
     const currentQuantity = quantities[pizza.id] || 0;
 
@@ -144,7 +142,6 @@ export default function Feed() {
   // Render item para a lista principal (vertical) - SEM IMAGEM
   const renderItem = ({item}: {item: Pizza}) => (
     <View style={styles.itemContainer}>
-      {/* Nenhuma imagem aqui */}
       <View style={styles.row}>
         <TouchableOpacity onPress={() => handleRemovePizza(item)}>
           <Icon name="minus-circle" size={25} color="#ff6347" />
@@ -164,19 +161,24 @@ export default function Feed() {
     </View>
   );
 
-  // Render item para a lista horizontal (menu) - COM IMAGEM e estilo original
+  // Render item para a lista horizontal (menu) - COM IMAGEM e fundo laranja SÓ em volta da imagem
   const renderMenuItem = ({item}: {item: Pizza}) => (
-    <TouchableOpacity style={styles.menuItem}>
-      <Image
-        source={{uri: item.caminho}}
-        style={styles.menuItemImage}
-        onError={e =>
-          console.log(
-            `Erro ao carregar imagem (menu) ${item.caminho}:`,
-            e.nativeEvent.error,
-          )
-        }
-      />
+    // TouchableOpacity externo para área de clique total
+    <TouchableOpacity style={styles.menuItemOuterContainer}>
+      {/* View que tem o fundo laranja e é o círculo */}
+      <View style={styles.menuItemImageBackground}>
+        <Image
+          source={{uri: item.caminho}}
+          style={styles.menuItemImage} // Imagem com sua borda
+          onError={e =>
+            console.log(
+              `Erro ao carregar imagem (menu) ${item.caminho}:`,
+              e.nativeEvent.error,
+            )
+          }
+        />
+      </View>
+      {/* Texto abaixo do círculo laranja */}
       <Text style={styles.menuItemText}>{item.nome}</Text>
     </TouchableOpacity>
   );
@@ -190,13 +192,11 @@ export default function Feed() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        {/* Ícone de busca original */}
         <View style={styles.searchIconContainer}>
           <Icon name="search" size={18} color="#fff" />
         </View>
       </View>
 
-      {/* Lista horizontal (Menu) */}
       <View style={styles.menuContainer}>
         {loading ? (
           <ActivityIndicator
@@ -211,7 +211,7 @@ export default function Feed() {
             horizontal={true}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.menuList}
-            renderItem={renderMenuItem} // Usa a função COM imagem
+            renderItem={renderMenuItem}
             ListEmptyComponent={
               <Text style={styles.emptyMenu}>Carregando pizzas...</Text>
             }
@@ -219,7 +219,6 @@ export default function Feed() {
         )}
       </View>
 
-      {/* Lista principal (Vertical) */}
       {loading && pizzas.length === 0 ? (
         <ActivityIndicator
           style={{marginTop: 50}}
@@ -230,7 +229,7 @@ export default function Feed() {
         <FlatList
           data={filteredPizzas}
           keyExtractor={item => `main-${item.id.toString()}`}
-          renderItem={renderItem} // Usa a função SEM imagem
+          renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty}>
@@ -242,7 +241,6 @@ export default function Feed() {
         />
       )}
 
-      {/* Modal */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -271,14 +269,18 @@ export default function Feed() {
   );
 }
 
-// Estilos ajustados
+// --- Estilos ---
+const IMAGE_SIZE = 55;
+const BORDER_WIDTH = 2;
+// Tamanho total da imagem com sua borda
+const IMAGE_WITH_BORDER_SIZE = IMAGE_SIZE + BORDER_WIDTH * 2;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8', // Mantendo o fundo
+    backgroundColor: '#f8f8f8',
   },
   searchContainer: {
-    // Mantendo o estilo da busca original
     flexDirection: 'row',
     alignItems: 'center',
     width: '90%',
@@ -286,12 +288,12 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 50,
-    paddingLeft: 15, // Ajuste no padding
-    paddingRight: 5, // Ajuste no padding
-    alignSelf: 'center', // Centralizar a barra
+    paddingLeft: 15,
+    paddingRight: 5,
+    alignSelf: 'center',
     marginTop: 20,
     marginBottom: 10,
-    backgroundColor: '#fff', // Fundo branco para a barra
+    backgroundColor: '#fff',
   },
   searchInput: {
     flex: 1,
@@ -299,7 +301,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   searchIconContainer: {
-    // Estilo do ícone de busca original
     backgroundColor: '#FFA500',
     borderRadius: 15,
     width: 30,
@@ -308,41 +309,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 5,
   },
-  // Estilos Menu Horizontal (COM IMAGEM e estilo laranja)
   menuContainer: {
     width: '100%',
-    paddingVertical: 10, // Espaçamento vertical
-    // borderBottomWidth: 1, // Pode remover a borda se preferir
-    // borderBottomColor: '#ddd',
-    backgroundColor: '#f8f8f8', // Fundo do container do menu
+    paddingVertical: 10,
+    backgroundColor: '#f8f8f8',
   },
   menuList: {
-    paddingHorizontal: 10, // Espaçamento lateral
+    paddingHorizontal: 10,
+    alignItems: 'flex-start', // Alinha os itens no início do eixo cruzado (vertical)
   },
-  menuItem: {
-    // Estilo original do botão laranja, com espaço para imagem
-    paddingVertical: 10, // Ajuste o padding vertical
-    paddingHorizontal: 15, // Ajuste o padding horizontal
-    backgroundColor: '#FFA500', // Cor laranja original
-    borderRadius: 25, // Bordas mais arredondadas
-    marginHorizontal: 6, // Espaço entre os itens
-    alignItems: 'center', // Centraliza conteúdo (imagem e texto)
-    minWidth: 120, // Largura mínima para caber conteúdo
+  // Container externo para cada item do menu (TouchableOpacity)
+  menuItemOuterContainer: {
+    alignItems: 'center', // Centraliza o círculo laranja e o texto abaixo dele
+    marginHorizontal: 8, // Espaço entre os itens completos
+    minWidth: IMAGE_WITH_BORDER_SIZE + 10, // Largura mínima baseada no círculo
   },
+  // View que tem o fundo laranja e forma o círculo
+  menuItemImageBackground: {
+    width: IMAGE_WITH_BORDER_SIZE, // Deve ser o tamanho da imagem + bordas
+    height: IMAGE_WITH_BORDER_SIZE,
+    borderRadius: IMAGE_WITH_BORDER_SIZE / 2, // Metade do tamanho para ser círculo
+    backgroundColor: '#FFA500', // Fundo laranja
+    justifyContent: 'center', // Centraliza a imagem dentro
+    alignItems: 'center', // Centraliza a imagem dentro
+    marginBottom: 5, // Espaço entre o círculo laranja e o texto
+    // Adiciona sombra se desejar
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  // Estilo da imagem (dentro do círculo laranja)
   menuItemImage: {
-    // Estilo para a imagem DENTRO do botão laranja
-    width: 55, // Tamanho da imagem
-    height: 55,
-    borderRadius: 27.5, // Metade da largura/altura para ser círculo
-    marginBottom: 8, // Espaço entre imagem e texto
-    backgroundColor: '#fff', // Fundo branco enquanto carrega (opcional)
+    width: IMAGE_SIZE, // Tamanho da imagem
+    height: IMAGE_SIZE,
+    borderRadius: IMAGE_SIZE / 2, // Imagem redonda
+    borderWidth: BORDER_WIDTH, // Borda branca na imagem
+    borderColor: '#fff',
+    // Não precisa de margin aqui
   },
+  // Estilo do texto (abaixo do círculo laranja)
   menuItemText: {
-    // Estilo original do texto
-    color: '#fff', // Cor branca
-    fontSize: 14, // Tamanho da fonte
-    fontWeight: 'bold',
-    textAlign: 'center', // Centraliza o texto
+    color: '#555', // Cor do texto pode ser ajustada
+    fontSize: 13, // Tamanho da fonte
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 2, // Pequeno espaço acima do texto
   },
   emptyMenu: {
     paddingHorizontal: 20,
@@ -355,46 +368,40 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   itemContainer: {
-    // Layout original do item da lista principal
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee', // Cor da borda mais suave
-    backgroundColor: '#fff', // Fundo branco para itens da lista
-    marginHorizontal: 5, // Pequena margem lateral
-    marginBottom: 10, // Espaço entre itens
-    borderRadius: 5, // Leve arredondamento
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+    marginHorizontal: 5,
+    marginBottom: 10,
+    borderRadius: 5,
   },
   row: {
-    // Layout original dos controles
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
   itemTitle: {
-    // Estilo original do título
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
     color: '#333',
-    flex: 1, // Para ocupar espaço disponível
+    flex: 1,
   },
   itemDescription: {
-    // Estilo original da descrição
     fontSize: 14,
     color: '#666',
-    marginLeft: 45, // Alinhar com controles (ajuste conforme necessário)
+    marginLeft: 45,
     marginBottom: 5,
   },
   itemPrice: {
-    // Estilo original do preço
     fontSize: 16,
-    color: '#4CAF50', // Verde
+    color: '#4CAF50',
     fontWeight: 'bold',
-    alignSelf: 'flex-end', // Alinhar à direita
-    marginRight: 10, // Espaço à direita
+    alignSelf: 'flex-end',
+    marginRight: 10,
   },
   quantity: {
-    // Estilo original da quantidade
     fontSize: 18,
     marginHorizontal: 12,
     fontWeight: 'bold',
@@ -402,10 +409,7 @@ const styles = StyleSheet.create({
     minWidth: 25,
     textAlign: 'center',
   },
-  controls: {
-    // Container para os controles +/-
-    // Não precisa de estilo extra aqui se já estão na 'row'
-  },
+  controls: {},
   empty: {
     textAlign: 'center',
     fontSize: 16,
@@ -413,7 +417,7 @@ const styles = StyleSheet.create({
     marginTop: 50,
     paddingHorizontal: 20,
   },
-  // Estilos Modal (sem alterações significativas)
+  // Estilos Modal
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
