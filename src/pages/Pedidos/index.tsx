@@ -1,23 +1,33 @@
-import React, {useEffect, useState, useContext} from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
-  Modal,
-  Button,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import axios from 'axios';
-import {AuthContext} from '../../contexts/AuthContext';
+import React from 'react';
+import {StyleSheet, Text, View, Button} from 'react-native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
-export default function Pedidos() {
+// Definindo o tipo para a navegação
+type RootStackParamList = {
+  Pedidos: undefined;
+  Detalhes: undefined;
+};
+
+type PedidosScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Pedidos'
+>;
+
+interface PedidosProps {
+  navigation: PedidosScreenNavigationProp;
+}
+
+export default function Pedidos({navigation}: PedidosProps) {
   console.log('Tela de Pedidos foi carregada');
+
   return (
     <View style={styles.container}>
       <Text>Pedidos</Text>
+      {/* Botão para navegar para a próxima tela */}
+      <Button
+        title="Ir para Detalhes"
+        onPress={() => navigation.navigate('Detalhes')} // Navega para a tela 'Detalhes'
+      />
     </View>
   );
 }
