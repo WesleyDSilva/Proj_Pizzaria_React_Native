@@ -9,31 +9,31 @@ import {
   Modal,
   Image,
   Button,
-  TextInput, // Importando o TextInput para a barra de busca
+  TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
 import {useCarrinho} from '../../contexts/CarrinhoContext';
 import {AuthContext} from '../../contexts/AuthContext';
 
-// Definindo o tipo dos dados da API
 interface Pizza {
   id: number;
   nome: string;
   descricao: string;
   preco: number;
+  imagem: string; // Adicionando a propriedade imagem
 }
 
 export default function Feed() {
   const {adicionarPizza} = useCarrinho();
-  const {user} = useContext(AuthContext); // Pegando o usuário do contexto de autenticação
+  const {user} = useContext(AuthContext);
   const [pizzas, setPizzas] = useState<Pizza[]>([]);
   const [quantities, setQuantities] = useState<{[key: number]: number}>({});
   const [selectedPizzas, setSelectedPizzas] = useState<Pizza[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchQuery, setSearchQuery] = useState<string>(''); // Estado para armazenar o texto da busca
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     const fetchPizzas = async () => {
@@ -41,11 +41,15 @@ export default function Feed() {
         const response = await axios.get<Pizza[]>(
           'https://devweb3.ok.etc.br/api/api_get_pizzas.php',
         );
-        const pizzasComPrecoConvertido = response.data.map(pizza => ({
+
+        // Mapear e adicionar a URL da imagem a cada pizza
+        const pizzasComImagens = response.data.map(pizza => ({
           ...pizza,
           preco: parseFloat(pizza.preco as unknown as string) || 0, // Converte o preço para número
+          imagem: '../../assets/pizza_default.png', // Adiciona o caminho da imagem
         }));
-        setPizzas(pizzasComPrecoConvertido);
+
+        setPizzas(pizzasComImagens);
       } catch (error) {
         console.error('Erro ao buscar os dados:', error);
       } finally {
@@ -136,7 +140,6 @@ export default function Feed() {
     setSelectedPizzas([]);
   };
 
-  // Função para filtrar as pizzas com base no texto de pesquisa
   const filteredPizzas = pizzas.filter(pizza =>
     pizza.nome.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -159,6 +162,8 @@ export default function Feed() {
         {item.descricao || 'Descrição não disponível'}
       </Text>
       <Text style={styles.itemPrice}>{`R$ ${item.preco.toFixed(2)}`}</Text>
+      {/* Adicionando a imagem */}
+      <Image source={{uri: item.imagem}} style={styles.image} />
     </View>
   );
 
@@ -169,7 +174,7 @@ export default function Feed() {
           style={styles.searchInput}
           placeholder="Busque por nome da pizza..."
           value={searchQuery}
-          onChangeText={setSearchQuery} // Atualiza o estado da pesquisa
+          onChangeText={setSearchQuery}
         />
         <View style={styles.iconContainer}>
           <Icon name="search" size={20} color="#000000" style={styles.icon} />
@@ -178,10 +183,10 @@ export default function Feed() {
 
       <View style={styles.menuContainer}>
         <FlatList
-          data={pizzas} // Mostra todas as pizzas sem filtro
+          data={pizzas}
           keyExtractor={item => item.id.toString()}
-          horizontal={true} // Faz a lista rolar horizontalmente
-          showsHorizontalScrollIndicator={false} // Esconde a barra de rolagem
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.menuList}
           renderItem={({item}) => (
             <TouchableOpacity style={styles.menuItem}>
@@ -195,7 +200,7 @@ export default function Feed() {
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
         <FlatList
-          data={filteredPizzas} // Usa a lista filtrada
+          data={filteredPizzas}
           keyExtractor={item => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
@@ -242,7 +247,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   searchContainer: {
-    flexDirection: 'row', // Garante que o campo de busca e o ícone fiquem na mesma linha
+    flexDirection: 'row',
     alignItems: 'center',
     width: '90%',
     height: 40,
@@ -253,28 +258,28 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   searchInput: {
-    flex: 1, // Faz o campo de texto ocupar o máximo de espaço disponível
+    flex: 1,
     height: '100%',
   },
   searchIcon: {
     position: 'absolute',
-    right: 10, // Posiciona o ícone no lado direito
+    right: 10,
   },
   iconContainer: {
-    position: 'relative', // Faz o ícone ser posicionado dentro do círculo
-    backgroundColor: '#FFA500', // Cor laranja
-    borderRadius: 20, // Forma o círculo
+    position: 'relative',
+    backgroundColor: '#FFA500',
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 30, // Define o tamanho do círculo
-    height: 30, // Define o tamanho do círculo
+    width: 30,
+    height: 30,
     marginLeft: 10,
   },
   icon: {
-    position: 'absolute', // Posiciona o ícone dentro do círculo
-    top: '50%', // Coloca o ícone no meio do círculo
-    left: '50%', // Coloca o ícone no meio do círculo
-    transform: [{translateX: -10}, {translateY: -10}], // Ajusta o ícone para ficar centralizado
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{translateX: -10}, {translateY: -10}],
   },
   list: {
     width: '100%',
@@ -340,10 +345,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   image: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-    marginBottom: 20,
+    width: 100, // ou o tamanho que você preferir
+    height: 100, // ou o tamanho que você preferir
+    resizeMode: 'cover', // ou 'contain', 'stretch'
+    marginTop: 10,
   },
   menuContainer: {
     width: '100%',
