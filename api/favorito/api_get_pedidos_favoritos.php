@@ -24,8 +24,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Validando se o cliente_id foi fornecido
     if ($cliente_id) {
-        // Montando a query SQL para selecionar os pedidos favoritos do cliente
-        $query = "SELECT cliente_id, pizza_id, nome_pizza, preco FROM pedidos_favoritos WHERE cliente_id = ?";
+        // Montando a query SQL para selecionar os pedidos favoritos do cliente com dados das pizzas
+        $query = "SELECT 
+                    pedidos_favoritos.id AS id_favorito,
+                    pedidos_favoritos.cliente_id,
+                    pizzas.id AS id_pizza,
+                    pizzas.nome AS nome_pizza,
+                    pizzas.descricao AS ingredientes,
+                    pizzas.preco AS preco_unitario,
+                    pedidos_favoritos.preco AS preco_total,
+                    pizzas.caminho AS imagem
+                  FROM pedidos_favoritos
+                  JOIN pizzas ON pedidos_favoritos.pizza_id = pizzas.id
+                  WHERE pedidos_favoritos.cliente_id = ?";
 
         $stmt = mysqli_prepare($conexao, $query);
 
@@ -37,17 +48,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             mysqli_stmt_execute($stmt);
 
             // Associando as variáveis para os resultados
-            mysqli_stmt_bind_result($stmt, $cliente_id_result, $pizza_id_result, $nome_pizza_result, $preco_result);
+            mysqli_stmt_bind_result(
+                $stmt,
+                $id_favorito,
+                $cliente_id_result,
+                $id_pizza,
+                $nome_pizza,
+                $ingredientes,
+                $preco_unitario,
+                $preco_total,
+                $imagem
+            );
 
             $favoritos = array();
 
             // Buscando os resultados
             while (mysqli_stmt_fetch($stmt)) {
                 $favoritos[] = array(
+                    'id_favorito' => $id_favorito,
                     'cliente_id' => $cliente_id_result,
-                    'pizza_id' => $pizza_id_result,
-                    'nome_pizza' => $nome_pizza_result,
-                    'preco' => $preco_result
+                    'id_pizza' => $id_pizza,
+                    'nome_pizza' => $nome_pizza,
+                    'ingredientes' => $ingredientes,
+                    'preco_unitario' => $preco_unitario,
+                    'preco_total' => $preco_total,
+                    'imagem' => $imagem
                 );
             }
 
