@@ -1,99 +1,176 @@
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
-import React, { useState, useEffect, useContext } from 'react';
-import { AuthContext } from '../../contexts/AuthContext'; // Importando o contexto de autenticação
+import React, {useState, useEffect, useContext} from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from 'react-native';
+import {AuthContext} from '../../contexts/AuthContext';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { useIsFocused } from '@react-navigation/native'; // Importando para saber quando a tela está focada
+import {useIsFocused} from '@react-navigation/native';
 
-// Definindo o tipo para os itens favoritos
-type Favorito = {
-  pizza_id: number;
-  nome_pizza: string;
-  preco: string;
+type FavoritoApiItem = {
+  id_favorito: string | number;
+  cliente_id: string | number;
+  id_pizza: string | number;
+  nome_pizza?: string | null;
+  ingredientes?: string | null;
+  preco_unitario?: string | null;
+  preco_total?: string | null;
+  imagem?: string | null;
 };
 
+type Favorito = {
+  id_favorito: number;
+  cliente_id: number;
+  id_pizza: number;
+  nome_pizza: string;
+  preco_total: string;
+  imagem: string;
+};
+
+const DEFAULT_IMAGE_URL =
+  'https://via.placeholder.com/150/cccccc/808080?text=Pizza';
+
 export default function Favoritos() {
-  const { user } = useContext(AuthContext); // Obtendo o usuário logado do contexto
-  const [favoritos, setFavoritos] = useState<Favorito[]>([]); // Definindo o tipo para o estado de favoritos
-  const [loading, setLoading] = useState(true); // Estado para controlar o carregamento
-  const isFocused = useIsFocused(); // Hook para verificar se a tela está focada
+  const {user} = useContext(AuthContext);
+  const [favoritos, setFavoritos] = useState<Favorito[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isFocused = useIsFocused();
 
-  // Função para obter os favoritos do usuário
   const fetchFavoritos = async () => {
-    setLoading(true); // Começa o carregamento
-    try {
-      const response = await axios.get(`https://devweb3.ok.etc.br/api/api_get_pedidos_favoritos.php?cliente_id=${user.id}`);
-      console.log('Resposta Completa da API:', response.data); // Verifique a resposta da API
-  
-      // Verificar se a resposta é um array
-      if (Array.isArray(response.data)) {
-        setFavoritos(response.data); // Atualiza o estado com os favoritos
-      } else {
-        console.log('Nenhum favorito encontrado');
-        setFavoritos([]); // Garantir que o estado seja um array vazio, caso não haja favoritos
-      }
-    } catch (error) {
-      console.error('Erro ao buscar favoritos:', error);
-      setFavoritos([]); // Garantir que o estado seja um array vazio, caso ocorra erro
-    } finally {
-      setLoading(false); // Parar o carregamento após a requisição
+    if (!user?.id) {
+      setFavoritos([]);
+      setLoading(false);
+      setError(null);
+      return;
     }
-  };
-
-  // Função para remover um favorito
-  const removerFavorito = async (pizza_id: number) => {
+    setLoading(true);
+    setError(null);
     try {
-      // Realiza a requisição GET passando pizza_id e cliente_id na URL
-      const response = await axios.get(
-        `https://devweb3.ok.etc.br/api/api_delete_favorito.php?pizza_id=${pizza_id}&cliente_id=${user.id}`
+      const response = await axios.get<FavoritoApiItem[] | any>(
+        `https://devweb3.ok.etc.br/api/api_get_pedidos_favoritos.php?cliente_id=${user.id}`,
       );
-  
-      if (response.data.success) {
-        setFavoritos(favoritos.filter(favorito => favorito.pizza_id !== pizza_id));
-        console.log(`Favorito com pizza_id ${pizza_id} removido com sucesso.`);
+      if (Array.isArray(response.data)) {
+        const favoritosFormatados: Favorito[] = response.data
+          .filter(fav => fav?.id_favorito && fav?.id_pizza && fav?.cliente_id)
+          .map(fav => ({
+            id_favorito: Number(fav.id_favorito),
+            cliente_id: Number(fav.cliente_id),
+            id_pizza: Number(fav.id_pizza),
+            nome_pizza: fav.nome_pizza || 'Pizza Favorita',
+            preco_total: fav.preco_total
+              ? parseFloat(fav.preco_total).toFixed(2)
+              : '0.00',
+            imagem: fav.imagem || DEFAULT_IMAGE_URL,
+          }));
+        setFavoritos(favoritosFormatados);
       } else {
-        console.error('Erro ao remover favorito:', response.data.message);
+        setFavoritos([]);
       }
-    } catch (error) {
-      console.error('Erro ao fazer requisição GET:', error);
+    } catch (err) {
+      setFavoritos([]);
+      setError('Não foi possível carregar seus favoritos.');
+    } finally {
+      setLoading(false);
     }
   };
-  
 
-  // Executa a requisição toda vez que a tela for focada
-  useEffect(() => {
-    if (isFocused) {
-      fetchFavoritos(); // Chama a função para buscar os favoritos sempre que a tela de favoritos for exibida
+  const removerFavorito = async (id_pizza: number) => {
+    if (!user?.id) {
+      Alert.alert('Erro', 'Usuário não identificado.');
+      return;
     }
-  }, [isFocused]); // Dependência para chamar sempre que a tela estiver focada
+    try {
+      const response = await axios.get(
+        `https://devweb3.ok.etc.br/api/api_delete_favorito.php?pizza_id=${id_pizza}&cliente_id=${user.id}`,
+      );
+      if (response.data.success) {
+        setFavoritos(prev => prev.filter(fav => fav.id_pizza !== id_pizza));
+        Alert.alert('Sucesso', 'Favorito removido!');
+      } else {
+        Alert.alert('Erro', 'Não foi possível remover o favorito.');
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Erro de rede ao remover.');
+    }
+  };
+
+  useEffect(() => {
+    if (isFocused && user?.id) {
+      fetchFavoritos();
+    } else if (!user?.id) {
+      setFavoritos([]);
+      setError(null);
+    }
+  }, [isFocused, user?.id]);
 
   if (loading) {
     return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFA500" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={styles.title}>Meus Favoritos</Text>
+        <View style={styles.centeredMessage}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchFavoritos} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Favoritos</Text>
-      {favoritos.length === 0 ? (
-        <Text>Nenhum favorito encontrado</Text> // Mensagem caso não haja favoritos
-      ) : (
+      <Text style={styles.title}>Meus Favoritos</Text>
+      {favoritos.length > 0 ? (
         <FlatList
           data={favoritos}
-          keyExtractor={(item) => item.pizza_id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <Text style={styles.pizzaName}>{item.nome_pizza}</Text>
-              <Text style={styles.pizzaPrice}>R$ {item.preco}</Text>
-              <TouchableOpacity onPress={() => removerFavorito(item.pizza_id)}>
-                <Icon name="trash" size={20} color="#ff0000" style={styles.icon} />
-              </TouchableOpacity>
-            </View>
-          )}
+          keyExtractor={item => item.id_favorito.toString()}
+          numColumns={2}
+          contentContainerStyle={styles.multiItemContentContainer}
+          renderItem={({item}) => {
+            const precoExibicao = `R$ ${item.preco_total}`;
+
+            return (
+              <View style={styles.itemContainer}>
+                <Image
+                  source={{uri: item.imagem}}
+                  style={styles.pizzaImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.textContainer}>
+                  <Text style={styles.pizzaName} numberOfLines={2}>
+                    {item.nome_pizza}
+                  </Text>
+                  <Text style={styles.pizzaPrice}>{precoExibicao}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => removerFavorito(item.id_pizza)}
+                  style={styles.removeIconContainer}>
+                  <Icon name="trash" size={20} color="#E53935" />
+                </TouchableOpacity>
+              </View>
+            );
+          }}
         />
+      ) : (
+        <View style={styles.centeredMessage}>
+          <Text style={styles.emptyText}>Você ainda não tem favoritos.</Text>
+        </View>
       )}
     </View>
   );
@@ -102,36 +179,91 @@ export default function Favoritos() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    paddingTop: 20,
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+    color: '#333',
+    textAlign: 'center',
   },
-  item: {
-    backgroundColor: '#f4f4f4',
-    padding: 10,
-    marginVertical: 5,
-    borderRadius: 5,
-    width: '90%',
-    flexDirection: 'row',
-    justifyContent: 'space-between', // Alinha o conteúdo de forma que o ícone fique à direita
-    alignItems: 'center', // Garante que o ícone e o texto fiquem alinhados verticalmente
+  multiItemContentContainer: {
+    paddingHorizontal: 5,
+  },
+  itemContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginVertical: 8,
+    marginHorizontal: 5, // Ajuste da margem para colunas
+    width: '48%', // Garante 2 itens por linha
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  pizzaImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#e0e0e0',
+  },
+  textContainer: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
   },
   pizzaName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1, // Deixa o nome da pizza ocupar o espaço restante
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#444',
+    marginBottom: 4,
   },
   pizzaPrice: {
-    fontSize: 16,
-    color: '#888',
-    marginRight: 10, // Adiciona margem para o ícone não encostar no preço
+    fontSize: 14,
+    color: '#00897B',
+    textAlign: 'center',
+    fontWeight: '500',
   },
-  icon: {
-    marginLeft: 10, // Dá um pequeno espaço entre o nome e o ícone
+  removeIconContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 8,
+    borderRadius: 20,
+  },
+  centeredMessage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#999',
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#E53935',
+    marginBottom: 10,
+  },
+  retryButton: {
+    backgroundColor: '#FFA500',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });
