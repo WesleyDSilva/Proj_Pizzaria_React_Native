@@ -11,10 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
 import {AuthContext} from '../../contexts/AuthContext';
-// Importa do CONTEXTO agora, incluindo CarrinhoItem se estiver definido lá
-import {useCarrinho, CarrinhoItem} from '../../contexts/CarrinhoContext';
-// Se CarrinhoItem estiver em arquivo separado:
-// import {CarrinhoItem} from '../../contexts/CarrinhoItem';
+import {useCarrinho, CarrinhoItem} from '../../contexts/CarrinhoContext'; // Ajuste import se CarrinhoItem for separado
 import {useFocusEffect} from '@react-navigation/native';
 
 // Interface para os itens AGRUPADOS na FlatList
@@ -26,7 +23,7 @@ interface GrupoCarrinhoItem {
   precoUnitario: number;
   quantidade: number;
   precoTotalGrupo: number;
-  primeiroItemId: number; // ID do primeiro item original (para decrementar)
+  primeiroItemId: number;
 }
 
 const Carrinho = () => {
@@ -35,7 +32,7 @@ const Carrinho = () => {
     useCarrinho();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [itemLoading, setItemLoading] = useState<{[key: string]: boolean}>({}); // Usar a chave do grupo (string)
+  const [itemLoading, setItemLoading] = useState<{[key: string]: boolean}>({});
   const [deletingAllType, setDeletingAllType] = useState<number | null>(null);
 
   const fetchCarrinho = useCallback(async () => {
@@ -63,13 +60,13 @@ const Carrinho = () => {
         }));
         setCarrinho(carrinhoData);
       } else {
-        console.warn('Resposta da API não é um array:', response.data);
+        console.warn('API não retornou array:', response.data);
         setCarrinho([]);
-        setError('Formato de resposta inesperado da API.');
+        setError('Erro de formato da API.');
       }
     } catch (err) {
-      console.error('Erro ao buscar os dados do carrinho:', err);
-      setError('Não foi possível carregar o carrinho.');
+      console.error('Erro ao buscar carrinho:', err);
+      setError('Não foi possível carregar.');
       setCarrinho([]);
     } finally {
       setLoading(false);
@@ -87,20 +84,19 @@ const Carrinho = () => {
     carrinho.forEach(item => {
       const groupKey = `${item.pizza_id}-${item.tipo_pizza}`;
       if (grupos.has(groupKey)) {
-        const grupoExistente = grupos.get(groupKey)!;
-        grupoExistente.quantidade += 1;
-        grupoExistente.precoTotalGrupo += item.preco || 0;
-        // Mantemos o primeiroItemId do primeiro item encontrado
+        const g = grupos.get(groupKey)!;
+        g.quantidade += 1;
+        g.precoTotalGrupo += item.preco || 0;
       } else {
         grupos.set(groupKey, {
           key: groupKey,
           pizza_id: item.pizza_id,
-          nome_pizza: item.nome_pizza || 'Pizza Desconhecida',
+          nome_pizza: item.nome_pizza || 'Pizza',
           tipo_pizza: item.tipo_pizza || 'N/A',
           precoUnitario: item.preco || 0,
           quantidade: 1,
           precoTotalGrupo: item.preco || 0,
-          primeiroItemId: item.id, // Guarda o ID do primeiro
+          primeiroItemId: item.id,
         });
       }
     });
@@ -108,22 +104,20 @@ const Carrinho = () => {
   }, [carrinho]);
 
   const total = useMemo(
-    () => gruposCarrinho.reduce((acc, grupo) => acc + grupo.precoTotalGrupo, 0),
+    () => gruposCarrinho.reduce((acc, g) => acc + g.precoTotalGrupo, 0),
     [gruposCarrinho],
   );
 
   // --- Handlers ---
-
-  // Função para ADICIONAR um novo item (incremento visual)
   const handleIncrementItem = async (grupo: GrupoCarrinhoItem) => {
     if (!user?.id) {
-      Alert.alert('Erro', 'Você precisa estar logado.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
     setItemLoading(prev => ({...prev, [grupo.key]: true}));
     try {
-      const response = await axios.post(
-        'https://devweb3.ok.etc.br/api/api_registrar_carrinho.php', // API de registro
+      const res = await axios.post(
+        'https://devweb3.ok.etc.br/api/api_registrar_carrinho.php',
         {
           cliente_id: Number(user.id),
           pizza_id: grupo.pizza_id,
@@ -132,155 +126,121 @@ const Carrinho = () => {
           tipo_pizza: grupo.tipo_pizza,
         },
       );
-      if (response.data.success || response.status === 200) {
-        await fetchCarrinho(); // Recarrega para obter o novo item com seu ID
+      if (res.data.success || res.status === 200) {
+        await fetchCarrinho();
       } else {
-        Alert.alert(
-          'Erro',
-          response.data.message || 'Não foi possível adicionar.',
-        );
+        Alert.alert('Erro', res.data.message || 'Não adicionado.');
       }
     } catch (err) {
-      console.error('Erro ao incrementar item:', err);
-      Alert.alert('Erro', 'Não foi possível adicionar.');
+      console.error('Erro inc:', err);
+      Alert.alert('Erro', 'Não adicionado.');
     } finally {
       setItemLoading(prev => ({...prev, [grupo.key]: false}));
     }
   };
 
-  // Função para REMOVER UM item (decremento visual)
   const handleDecrementItem = async (grupo: GrupoCarrinhoItem) => {
     if (!user?.id) {
-      Alert.alert('Erro', 'Você precisa estar logado.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
-    if (grupo.quantidade <= 0) return; // Não faz nada se a quantidade já for 0
-
-    // Encontra UM ID de item correspondente no carrinho original
-    const itemParaRemover = carrinho.find(
-      item =>
-        item.pizza_id === grupo.pizza_id &&
-        item.tipo_pizza === grupo.tipo_pizza,
+    if (grupo.quantidade <= 0) return;
+    const itemRem = carrinho.find(
+      i => i.pizza_id === grupo.pizza_id && i.tipo_pizza === grupo.tipo_pizza,
     );
-
-    if (!itemParaRemover) {
-      console.error(
-        `Não foi possível encontrar um item no carrinho para o grupo ${grupo.key}`,
-      );
-      Alert.alert('Erro', 'Erro ao tentar remover o item.');
+    if (!itemRem) {
+      console.error(`Item não achado: ${grupo.key}`);
+      Alert.alert('Erro', 'Erro ao remover.');
       return;
     }
-
-    const itemIdToRemove = itemParaRemover.id; // ID ÚNICO A SER REMOVIDO
-
+    const idRem = itemRem.id;
     setItemLoading(prev => ({...prev, [grupo.key]: true}));
     try {
-      // *** CHAMA A API CORRETA QUE REMOVE POR ID ÚNICO ***
-      const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho_item.php?id=${itemIdToRemove}`;
-      console.log('Chamando API de remoção de item:', url); // Log para depuração
-      const response = await axios.get(url);
-
-      if (response.data.success || response.status === 200) {
-        // Remove do contexto pelo ID ÚNICO
-        removerPizza(itemIdToRemove);
-        console.log(`Item ${itemIdToRemove} removido com sucesso.`);
+      const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho_item.php?id=${idRem}`;
+      const res = await axios.get(url);
+      if (res.data.success || res.status === 200) {
+        removerPizza(idRem);
       } else {
-        console.error('Erro da API ao remover item:', response.data);
-        Alert.alert(
-          'Erro',
-          response.data.message || 'Erro ao remover o item da API.',
-        );
+        console.error('Erro API rem:', res.data);
+        Alert.alert('Erro', res.data.message || 'Erro ao remover.');
       }
     } catch (err) {
-      console.error('Erro de rede/axios ao decrementar item:', err);
-      Alert.alert('Erro', 'Não foi possível remover o item.');
+      console.error('Erro net/axios dec:', err);
+      Alert.alert('Erro', 'Não removido.');
     } finally {
       setItemLoading(prev => ({...prev, [grupo.key]: false}));
     }
   };
 
-  // Função para remover TODOS de um tipo (usado pela lixeira)
   const handleDeleteAllOfType = async (
     pizza_id: number,
     nome_pizza: string,
   ) => {
     if (!user?.id) {
-      Alert.alert('Erro', 'Você precisa estar logado.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
     Alert.alert(
       'Remover Todas?',
-      `Tem certeza que deseja remover todas as pizzas "${nome_pizza}" do carrinho?`,
+      `Remover todas "${nome_pizza}"?`,
       [
         {text: 'Cancelar', style: 'cancel'},
         {
-          text: 'Remover Todas',
+          text: 'Remover',
           style: 'destructive',
           onPress: async () => {
             setDeletingAllType(pizza_id);
             try {
-              // Chama a API que remove TODAS pelo pizza_id
               const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho.php?pizza_id=${pizza_id}&cliente_id=${Number(
                 user.id,
               )}`;
-              const response = await axios.get(url);
-              if (response.data.success || response.status === 200) {
-                removerTodasAsPizzasDoTipo(pizza_id); // Remove do contexto pelo pizza_id
-                Alert.alert(
-                  'Sucesso',
-                  `Todas as pizzas "${nome_pizza}" foram removidas.`,
-                );
+              const res = await axios.get(url);
+              if (res.data.success || res.status === 200) {
+                removerTodasAsPizzasDoTipo(pizza_id);
+                console.log(`Pizzas "${nome_pizza}" removidas.`);
               } else {
-                Alert.alert(
-                  'Erro',
-                  response.data.message || 'Erro ao remover.',
-                );
+                Alert.alert('Erro', res.data.message || 'Erro ao remover.');
               }
             } catch (err) {
-              console.error(`Erro ao remover tipo ${pizza_id}:`, err);
-              Alert.alert('Erro', 'Não foi possível remover todas as pizzas.');
+              console.error(`Erro rem tipo ${pizza_id}:`, err);
+              Alert.alert('Erro', 'Não removidas.');
             } finally {
               setDeletingAllType(null);
             }
           },
         },
       ],
+      {cancelable: true}, // Permite cancelar clicando fora no Android
     );
   };
 
-  // handleFavorite
   const handleFavorite = async (grupo: GrupoCarrinhoItem) => {
     if (!user?.id) {
-      Alert.alert('Erro', 'Você precisa estar logado.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
     try {
-      const pizza = {
+      const p = {
         cliente_id: Number(user.id),
         pizza_id: grupo.pizza_id,
         nome_pizza: grupo.nome_pizza,
         preco: grupo.precoUnitario,
       };
-      if (
-        !pizza.cliente_id ||
-        !pizza.pizza_id ||
-        !pizza.nome_pizza ||
-        !pizza.preco
-      ) {
-        Alert.alert('Erro', 'Dados incompletos para favoritar.');
+      if (!p.cliente_id || !p.pizza_id || !p.nome_pizza || !p.preco) {
+        Alert.alert('Erro', 'Dados incompletos.');
         return;
       }
-      const response = await axios.post(
+      const res = await axios.post(
         'https://devweb3.ok.etc.br/api/api_pedido_favorito.php',
-        {pizzas: [pizza]},
+        {pizzas: [p]},
       );
-      if (response.data.success) {
-        Alert.alert('Sucesso', 'Adicionada aos favoritos!');
+      if (res.data.success) {
+        Alert.alert('Sucesso', 'Favoritada!');
       } else {
-        Alert.alert('Erro', response.data.message || 'Erro ao favoritar.');
+        Alert.alert('Erro', res.data.message || 'Erro ao favoritar.');
       }
-    } catch (error) {
-      console.error('Erro ao favoritar:', error);
+    } catch (err) {
+      console.error('Erro fav:', err);
       Alert.alert('Erro', 'Erro ao favoritar.');
     }
   };
@@ -294,7 +254,6 @@ const Carrinho = () => {
       </View>
     );
   }
-
   if (error) {
     return (
       <View style={styles.centered}>
@@ -305,7 +264,6 @@ const Carrinho = () => {
       </View>
     );
   }
-
   if (gruposCarrinho.length === 0) {
     return (
       <View style={styles.centered}>
@@ -326,6 +284,7 @@ const Carrinho = () => {
             <View style={[styles.triangle, styles.topLeftTriangle]} />
             <View style={[styles.triangle, styles.bottomRightTriangle]} />
             <View style={styles.itemContent}>
+              {/* Botão Favorito */}
               <TouchableOpacity
                 onPress={() => handleFavorite(grupo)}
                 style={styles.iconButton}
@@ -342,6 +301,7 @@ const Carrinho = () => {
                   }
                 />
               </TouchableOpacity>
+              {/* Detalhes */}
               <View style={styles.itemDetails}>
                 <Text
                   style={styles.itemTextName}
@@ -354,68 +314,72 @@ const Carrinho = () => {
                   R$ {grupo.precoUnitario.toFixed(2)} / Unid.{' '}
                 </Text>
               </View>
+              {/* Controles de Quantidade Agrupados */}
               <View style={styles.quantityControls}>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  // *** CHAMA A FUNÇÃO CORRETA handleDecrementItem ***
-                  onPress={() => handleDecrementItem(grupo)}
-                  disabled={
-                    itemLoading[grupo.key] ||
-                    deletingAllType === grupo.pizza_id ||
-                    grupo.quantidade === 0
-                  }>
-                  <Icon
-                    name="minus-circle"
-                    size={24}
-                    color={
+                {/* View com Background Laranja Claro */}
+                <View style={styles.quantityGroupBackground}>
+                  {/* Botão Menos (-) */}
+                  <TouchableOpacity
+                    style={styles.quantityCtrlButton} // Estilo para botão dentro do grupo
+                    onPress={() => handleDecrementItem(grupo)}
+                    disabled={
                       itemLoading[grupo.key] ||
                       deletingAllType === grupo.pizza_id ||
                       grupo.quantidade === 0
-                        ? '#ccc'
-                        : '#ff6347'
-                    }
-                  />
-                </TouchableOpacity>
-                <Text style={styles.quantityText}>{grupo.quantidade}</Text>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => handleIncrementItem(grupo)}
-                  disabled={
-                    itemLoading[grupo.key] || deletingAllType === grupo.pizza_id
-                  }>
-                  <Icon
-                    name="plus-circle"
-                    size={24}
-                    color={
+                    }>
+                    <Icon
+                      name="minus"
+                      size={16}
+                      color={
+                        itemLoading[grupo.key] ||
+                        deletingAllType === grupo.pizza_id ||
+                        grupo.quantidade === 0
+                          ? '#a0a0a0'
+                          : '#D32F2F'
+                      } // Vermelho mais escuro
+                    />
+                  </TouchableOpacity>
+
+                  {/* Texto da Quantidade */}
+                  <Text style={styles.quantityText}>{grupo.quantidade}</Text>
+
+                  {/* Botão Mais (+) */}
+                  <TouchableOpacity
+                    style={styles.quantityCtrlButton} // Estilo para botão dentro do grupo
+                    onPress={() => handleIncrementItem(grupo)}
+                    disabled={
                       itemLoading[grupo.key] ||
                       deletingAllType === grupo.pizza_id
-                        ? '#ccc'
-                        : '#32cd32'
-                    }
-                  />
-                </TouchableOpacity>
+                    }>
+                    <Icon
+                      name="plus"
+                      size={16}
+                      color={
+                        itemLoading[grupo.key] ||
+                        deletingAllType === grupo.pizza_id
+                          ? '#a0a0a0'
+                          : '#388E3C'
+                      } // Verde mais escuro
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Botão Lixeira (Trash) - Separado */}
                 <TouchableOpacity
-                  style={styles.trashButton}
+                  style={styles.trashButtonContainer}
                   onPress={() =>
                     handleDeleteAllOfType(grupo.pizza_id, grupo.nome_pizza)
-                  } // Mantém esta chamada para o trash
+                  }
                   disabled={
                     deletingAllType === grupo.pizza_id || itemLoading[grupo.key]
                   }>
-                  {deletingAllType === grupo.pizza_id ? (
-                    <ActivityIndicator size="small" color="#dc3545" />
-                  ) : (
-                    <Icon
-                      name="trash"
-                      size={22}
-                      color={
-                        deletingAllType === grupo.pizza_id ||
-                        itemLoading[grupo.key]
-                          ? '#ccc'
-                          : '#dc3545'
-                      }
-                    />
-                  )}
+                  <View style={styles.trashIconCircle}>
+                    {deletingAllType === grupo.pizza_id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Icon name="trash" size={16} color="#515151" />
+                    )}
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -429,8 +393,10 @@ const Carrinho = () => {
   );
 };
 
-// --- Estilos (sem alterações desde a última versão) ---
+// --- Estilos ---
 const TRIANGLE_SIZE = 15;
+const TRASH_CIRCLE_SIZE = 30;
+const TRASH_BORDER_WIDTH = 2;
 
 const styles = StyleSheet.create({
   container: {
@@ -483,26 +449,49 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   quantityControls: {
+    // Container geral para os controles (agrupado + lixeira)
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 'auto',
+    marginLeft: 'auto', // Empurra para a direita
   },
-  quantityButton: {
-    paddingHorizontal: 5,
-    paddingVertical: 5,
+  // View que agrupa -, quantidade, + com fundo laranja claro
+  quantityGroupBackground: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFE0B2', // Laranja bem claro
+    borderRadius: 15, // Bordas arredondadas para o grupo
+    paddingHorizontal: 8, // Padding interno horizontal
+    paddingVertical: 4, // Padding interno vertical
+    height: 30, // Altura fixa para o grupo
+  },
+  // Estilo para os botões +/- DENTRO do grupo laranja
+  quantityCtrlButton: {
+    paddingHorizontal: 5, // Espaçamento interno do botão
   },
   quantityText: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginHorizontal: 8,
-    color: '#333',
-    minWidth: 25,
+    marginHorizontal: 10, // Espaço entre botões e número
+    color: '#5D4037', // Cor marrom escuro para o número
+    minWidth: 20, // Largura mínima
     textAlign: 'center',
   },
-  trashButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    marginLeft: 4,
+  // Container do botão da lixeira
+  trashButtonContainer: {
+    marginLeft: 10, // Espaço entre o grupo +/- e a lixeira
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Círculo da lixeira (mantido)
+  trashIconCircle: {
+    width: TRASH_CIRCLE_SIZE,
+    height: TRASH_CIRCLE_SIZE,
+    borderRadius: TRASH_CIRCLE_SIZE / 2,
+    backgroundColor: '#FFEACE',
+    borderWidth: TRASH_BORDER_WIDTH,
+    borderColor: '#FFA831',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   triangle: {
     width: 0,
@@ -534,17 +523,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  error: {
-    color: 'red',
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  message: {
-    fontSize: 18,
-    color: '#666',
-    textAlign: 'center',
-  },
+  error: {color: 'red', fontSize: 18, textAlign: 'center', marginBottom: 10},
+  message: {fontSize: 18, color: '#666', textAlign: 'center'},
   retryButton: {
     marginTop: 15,
     backgroundColor: '#FFA500',
@@ -552,11 +532,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 5,
   },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  retryButtonText: {color: '#fff', fontSize: 16, fontWeight: 'bold'},
   totalContainer: {
     marginTop: 'auto',
     paddingVertical: 15,
@@ -572,7 +548,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   controlTarget: {},
-  controlType: {},
+  controlType: {}, // Estilos placeholder não usados
 });
 
 export default Carrinho;
