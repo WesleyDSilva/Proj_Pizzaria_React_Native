@@ -8,42 +8,45 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  TextInput,
 } from 'react-native';
 import {AuthContext} from '../../contexts/AuthContext';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import {useIsFocused} from '@react-navigation/native';
 
-type FavoritoApiItem = {
-  id_favorito: string | number;
-  cliente_id: string | number;
-  id_pizza: string | number;
-  nome_pizza?: string | null;
-  ingredientes?: string | null;
-  preco_unitario?: string | null;
-  preco_total?: string | null;
-  imagem?: string | null;
-};
-
-type Favorito = {
-  id_favorito: number;
-  cliente_id: number;
-  id_pizza: number;
-  nome_pizza: string;
-  preco_total: string;
-  imagem: string;
-};
-
 const DEFAULT_IMAGE_URL =
   'https://via.placeholder.com/150/cccccc/808080?text=Pizza';
 
 export default function Favoritos() {
   const {user} = useContext(AuthContext);
-  const [favoritos, setFavoritos] = useState<Favorito[]>([]);
+  const [favoritos, setFavoritos] = useState<
+    {
+      id_favorito: number;
+      cliente_id: number;
+      id_pizza: number;
+      nome_pizza: any;
+      preco_total: string;
+      imagem: any;
+    }[]
+  >([]); // Aqui é onde você especifica o tipo do estado de favorit
+  const [filteredFavoritos, setFilteredFavoritos] = useState<
+    {
+      id_favorito: number;
+      cliente_id: number;
+      id_pizza: number;
+      nome_pizza: any;
+      preco_total: string;
+      imagem: any;
+    }[]
+  >([]); // Aqui também especifica o tipo de `filteredFavoritos`
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // Aceita tanto string quanto null
+
+  const [searchQuery, setSearchQuery] = useState('');
   const isFocused = useIsFocused();
 
+  // Função para buscar os favoritos na API
   const fetchFavoritos = async () => {
     if (!user?.id) {
       setFavoritos([]);
@@ -54,34 +57,36 @@ export default function Favoritos() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get<FavoritoApiItem[] | any>(
+      const response = await axios.get(
         `https://devweb3.ok.etc.br/api/api_get_pedidos_favoritos.php?cliente_id=${user.id}`,
       );
       if (Array.isArray(response.data)) {
-        const favoritosFormatados: Favorito[] = response.data
-          .filter(fav => fav?.id_favorito && fav?.id_pizza && fav?.cliente_id)
-          .map(fav => ({
-            id_favorito: Number(fav.id_favorito),
-            cliente_id: Number(fav.cliente_id),
-            id_pizza: Number(fav.id_pizza),
-            nome_pizza: fav.nome_pizza || 'Pizza Favorita',
-            preco_total: fav.preco_total
-              ? parseFloat(fav.preco_total).toFixed(2)
-              : '0.00',
-            imagem: fav.imagem || DEFAULT_IMAGE_URL,
-          }));
+        const favoritosFormatados = response.data.map(fav => ({
+          id_favorito: Number(fav.id_favorito),
+          cliente_id: Number(fav.cliente_id),
+          id_pizza: Number(fav.id_pizza),
+          nome_pizza: fav.nome_pizza || 'Pizza Favorita',
+          preco_total: fav.preco_total
+            ? parseFloat(fav.preco_total).toFixed(2)
+            : '0.00',
+          imagem: fav.imagem || DEFAULT_IMAGE_URL,
+        }));
         setFavoritos(favoritosFormatados);
+        setFilteredFavoritos(favoritosFormatados);
       } else {
         setFavoritos([]);
+        setFilteredFavoritos([]);
       }
     } catch (err) {
       setFavoritos([]);
+      setFilteredFavoritos([]);
       setError('Não foi possível carregar seus favoritos.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Função para remover um favorito
   const removerFavorito = async (id_pizza: number) => {
     if (!user?.id) {
       Alert.alert('Erro', 'Usuário não identificado.');
@@ -93,6 +98,9 @@ export default function Favoritos() {
       );
       if (response.data.success) {
         setFavoritos(prev => prev.filter(fav => fav.id_pizza !== id_pizza));
+        setFilteredFavoritos(prev =>
+          prev.filter(fav => fav.id_pizza !== id_pizza),
+        );
         Alert.alert('Sucesso', 'Favorito removido!');
       } else {
         Alert.alert('Erro', 'Não foi possível remover o favorito.');
@@ -102,11 +110,21 @@ export default function Favoritos() {
     }
   };
 
+  // Função para atualizar a busca e filtrar a lista
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    const filtered = favoritos.filter(fav =>
+      fav.nome_pizza.toLowerCase().includes(text.toLowerCase()),
+    );
+    setFilteredFavoritos(filtered);
+  };
+
   useEffect(() => {
     if (isFocused && user?.id) {
       fetchFavoritos();
     } else if (!user?.id) {
       setFavoritos([]);
+      setFilteredFavoritos([]);
       setError(null);
     }
   }, [isFocused, user?.id]);
@@ -136,9 +154,27 @@ export default function Favoritos() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Meus Favoritos</Text>
-      {favoritos.length > 0 ? (
+
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar Pizza"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        <View style={styles.searchIconContainer}>
+          <Icon
+            name="search"
+            size={20}
+            color="#fff"
+            style={styles.searchIcon}
+          />
+        </View>
+      </View>
+
+      {filteredFavoritos.length > 0 ? (
         <FlatList
-          data={favoritos}
+          data={filteredFavoritos}
           keyExtractor={item => item.id_favorito.toString()}
           numColumns={2}
           contentContainerStyle={styles.multiItemContentContainer}
@@ -147,11 +183,14 @@ export default function Favoritos() {
 
             return (
               <View style={styles.itemContainer}>
-                <Image
-                  source={{uri: item.imagem}}
-                  style={styles.pizzaImage}
-                  resizeMode="contain"
-                />
+                <View style={styles.pizzaImageContainer}>
+                  <Image
+                    source={{uri: item.imagem}}
+                    style={styles.pizzaImage}
+                    resizeMode="contain"
+                  />
+                </View>
+
                 <View style={styles.textContainer}>
                   <Text style={styles.pizzaName} numberOfLines={2}>
                     {item.nome_pizza}
@@ -161,7 +200,7 @@ export default function Favoritos() {
                 <TouchableOpacity
                   onPress={() => removerFavorito(item.id_pizza)}
                   style={styles.removeIconContainer}>
-                  <Icon name="trash" size={20} color="#E53935" />
+                  <Icon name="trash" size={20} color="#515151" />
                 </TouchableOpacity>
               </View>
             );
@@ -211,10 +250,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
+  pizzaImageContainer: {
+    width: 135, // Aumenta o tamanho total para incluir o espaço extra
+    height: 135,
+    borderRadius: 80, // Metade do width/height para manter o círculo
+    backgroundColor: '#FFEACE', // Cor do espaço ao redor da imagem
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: 20,
+    borderWidth: 2, // Define a borda preta externa
+    borderColor: '#FFA831', // Cor preta para a borda externa
+  },
   pizzaImage: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#e0e0e0',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2, // Borda da imagem
+
+    backgroundColor: '#FFEACE', // Fundo para garantir o espaço de 5px
+    alignSelf: 'center',
   },
   textContainer: {
     paddingVertical: 10,
@@ -222,25 +277,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pizzaName: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: 'bold',
     textAlign: 'center',
-    color: '#444',
+    color: '#000000',
     marginBottom: 4,
   },
   pizzaPrice: {
-    fontSize: 14,
-    color: '#00897B',
+    fontSize: 20,
+    //color: '#00897B',
+    color: 'red',
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: 'bold',
   },
   removeIconContainer: {
     position: 'absolute',
     top: 10,
     right: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 8,
-    borderRadius: 20,
+    backgroundColor: '#FFEACE', // Cor de fundo do botão
+    padding: 5,
+    borderRadius: 100,
+    borderWidth: 2, // Define a espessura da borda
+    borderColor: '#FFA831', // Cor da borda (altere para a desejada)
   },
   centeredMessage: {
     justifyContent: 'center',
@@ -265,5 +323,34 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 15,
+    paddingRight: 40,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '90%',
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 80,
+    alignSelf: 'center',
+    marginTop: 10,
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+  },
+  searchIconContainer: {
+    position: 'absolute',
+    right: 10,
+    backgroundColor: '#FFA500',
+    padding: 5,
+    borderRadius: 50,
+  },
+  searchIcon: {
+    alignSelf: 'center',
   },
 });
