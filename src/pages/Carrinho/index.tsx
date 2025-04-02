@@ -311,7 +311,8 @@ const Carrinho = () => {
                 </Text>
                 <Text style={styles.itemTextPrice}>
                   {' '}
-                  R$ {grupo.precoUnitario.toFixed(2)} / Unid.{' '}
+                  {/*R$ {grupo.precoUnitario.toFixed(2)} / Unid.{' '} */}
+                  R$ {grupo.precoUnitario.toFixed(2)}{' '}
                 </Text>
               </View>
               {/* Controles de Quantidade Agrupados */}
@@ -436,14 +437,15 @@ const styles = StyleSheet.create({
   },
   itemTextName: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#444',
+    fontWeight: 'bold',
+    color: '#000000',
     marginBottom: 3,
   },
   itemTextPrice: {
-    fontSize: 14,
-    color: '#00897B',
-    fontWeight: '500',
+    fontSize: 16,
+    //color: '#00897B',
+    color: 'red',
+    fontWeight: 'bold',
   },
   iconButton: {
     padding: 8,
