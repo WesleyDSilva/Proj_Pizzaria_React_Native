@@ -7,10 +7,10 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 
 // Configurações do banco de dados
-$host = 'devweb3sql.mysql.dbaas.com.br';
-$dbname = 'devweb3sql';
-$username = 'devweb3sql';
-$password = 'h2023_FaTEC#$';
+$host = 'wesley.mysql.dbaas.com.br';
+$dbname = 'wesley';
+$username = 'wesley';
+$password = 'tI7u96pYDAv3I#';
 
 $conexao = mysqli_connect($host, $username, $password, $dbname);
 
@@ -29,25 +29,37 @@ mysqli_set_charset($conexao, "utf8"); // Configurar o charset para UTF-8
 if (isset($_GET['cliente_id']) && is_numeric($_GET['cliente_id'])) {
     $clienteId = $_GET['cliente_id'];
 
-    // Query para buscar os itens do carrinho do cliente
-    $query = "SELECT c.id, c.preco, c.nome_pizza, c.tipo_pizza, c.pizza_id 
-              FROM carrinho c
-              WHERE c.cliente_id = $clienteId";
+    // Query para buscar os itens do carrinho do cliente com JOIN na tabela de pizzas
+    $query = "SELECT
+                  c.id AS carrinho_id,
+                  c.preco,
+                  c.nome_pizza,
+                  c.tipo_pizza,
+                  c.pizza_id,
+                  p.caminho AS caminho_imagem
+              FROM
+                  carrinho c
+              JOIN
+                  Pizzas p
+              ON
+                  c.pizza_id = p.id
+              WHERE
+                  c.cliente_id = $clienteId";
 
     // Executar a query
     $resultado = mysqli_query($conexao, $query);
 
     if ($resultado && mysqli_num_rows($resultado) > 0) {
         // Inicializar um array para armazenar os resultados
-        $usuarios = array();
+        $itens_carrinho = array();
 
         // Buscar os resultados um por um e adicionar ao array
         while ($row = mysqli_fetch_assoc($resultado)) {
-            $usuarios[] = $row;
+            $itens_carrinho[] = $row;
         }
 
-        // Retornar os dados em formato JSON  - REMOVE THE SECOND PARAMETER
-        echo json_encode($usuarios); 
+        // Retornar os dados em formato JSON
+        echo json_encode($itens_carrinho);
     } else {
         // Caso não haja registros, retorna uma mensagem
         echo json_encode(array(
