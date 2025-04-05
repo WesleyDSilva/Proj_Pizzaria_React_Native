@@ -40,7 +40,7 @@ if (isset($_GET['cliente_id']) && is_numeric($_GET['cliente_id'])) {
               FROM
                   carrinho c
               JOIN
-                  Pizzas p
+                  pizzas p
               ON
                   c.pizza_id = p.id
               WHERE
@@ -59,7 +59,7 @@ if (isset($_GET['cliente_id']) && is_numeric($_GET['cliente_id'])) {
         }
 
         // Retornar os dados em formato JSON  - REMOVE THE SECOND PARAMETER
-        echo json_encode($usuarios);
+        echo json_encode($itens_carrinho);
     } else {
         // Caso não haja registros, retorna uma mensagem
         echo json_encode(array(
