@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import axios from 'axios';
 import {AuthContext} from '../../contexts/AuthContext';
@@ -136,9 +137,9 @@ const UserProfileForm = () => {
   const {signOut} = useContext(AuthContext);
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Perfil do Usuário</Text>
+      <Text style={styles.title}>MEU PERFIL</Text>
 
-      <Text>Nome:</Text>
+      <Text style={styles.textInput}>Nome:</Text>
       <TextInput
         style={styles.input}
         value={nome}
@@ -146,7 +147,7 @@ const UserProfileForm = () => {
         placeholder="Digite seu nome"
       />
 
-      <Text>Cpf:</Text>
+      <Text style={styles.textInput}>Cpf:</Text>
       <TextInput
         style={styles.input}
         value={cpf}
@@ -154,7 +155,7 @@ const UserProfileForm = () => {
         placeholder="Digite seu cpf"
       />
 
-      <Text>Logradouro:</Text>
+      <Text style={styles.textInput}>Logradouro:</Text>
       <TextInput
         style={styles.input}
         value={logradouro}
@@ -162,7 +163,7 @@ const UserProfileForm = () => {
         placeholder="Digite seu logradouro"
       />
 
-      <Text>Cidade:</Text>
+      <Text style={styles.textInput}>Cidade:</Text>
       <TextInput
         style={styles.input}
         value={cidade}
@@ -170,7 +171,7 @@ const UserProfileForm = () => {
         placeholder="Digite sua cidade"
       />
 
-      <Text>UF:</Text>
+      <Text style={styles.textInput}>UF:</Text>
       <TextInput
         style={styles.input}
         value={uf}
@@ -178,7 +179,7 @@ const UserProfileForm = () => {
         placeholder="Digite sua UF"
       />
 
-      <Text>CEP:</Text>
+      <Text style={styles.textInput}>CEP:</Text>
       <TextInput
         style={styles.input}
         value={cep}
@@ -188,7 +189,7 @@ const UserProfileForm = () => {
         maxLength={8}
       />
 
-      <Text>Complemento:</Text>
+      <Text style={styles.textInput}>Complemento:</Text>
       <TextInput
         style={styles.input}
         value={complemento}
@@ -196,7 +197,7 @@ const UserProfileForm = () => {
         placeholder="Digite o complemento"
       />
 
-      <Text>Número da Casa:</Text>
+      <Text style={styles.textInput}>Número da Casa:</Text>
       <TextInput
         style={styles.input}
         value={numeroCasa}
@@ -204,7 +205,7 @@ const UserProfileForm = () => {
         placeholder="Digite o número da casa"
       />
 
-      <Text>Email:</Text>
+      <Text style={styles.textInput}>Email:</Text>
       <TextInput
         style={styles.input}
         value={email}
@@ -212,7 +213,7 @@ const UserProfileForm = () => {
         placeholder="Digite seu email"
       />
 
-      <Text>Telefone:</Text>
+      <Text style={styles.textInput}>Telefone:</Text>
       <TextInput
         style={styles.input}
         value={telefone}
@@ -220,7 +221,7 @@ const UserProfileForm = () => {
         placeholder="Digite seu telefone"
       />
 
-      <Text>Senha:</Text>
+      <Text style={styles.textInput}>Senha:</Text>
       <TextInput
         style={styles.input}
         value={senha}
@@ -229,7 +230,7 @@ const UserProfileForm = () => {
         placeholder="Digite sua senha"
       />
 
-      <Text>Confirmar Senha:</Text>
+      <Text style={styles.textInput}>Confirmar Senha:</Text>
       <TextInput
         style={styles.input}
         value={confirmarSenha}
@@ -238,8 +239,13 @@ const UserProfileForm = () => {
         placeholder="Confirme sua senha"
       />
 
-      <Button title="Salvar" onPress={handleSave} />
-      <Button title="Logout" onPress={signOut} />
+      <TouchableOpacity style={styles.buttonContainer2} onPress={handleSave}>
+        <Text style={styles.buttonText2}>SALVAR</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.buttonContainer} onPress={signOut}>
+        <Text style={styles.buttonText}>SAIR</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -254,6 +260,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    color: 'black',
   },
   input: {
     height: 40,
@@ -261,6 +268,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
     paddingLeft: 10,
+    color: 'black',
+  },
+  textInput: {
+    color: 'black',
+    fontSize: 15,
+  },
+  buttonContainer: {
+    marginBottom: 35,
+    borderRadius: 25, // Reduzi o valor para evitar distorções
+    backgroundColor: 'transparent',
+    borderColor: '#FFA831',
+    borderWidth: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 20, // Adiciona um pouco de espaço lateral
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'black',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+
+  buttonContainer2: {
+    marginBottom: 20,
+    borderRadius: 80,
+    backgroundColor: '#FFA831',
+    padding: 10,
+    marginTop: 15,
+  },
+  buttonText2: {
+    color: 'black',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
