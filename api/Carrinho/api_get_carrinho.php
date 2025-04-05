@@ -58,8 +58,8 @@ if (isset($_GET['cliente_id']) && is_numeric($_GET['cliente_id'])) {
             $itens_carrinho[] = $row;
         }
 
-        // Retornar os dados em formato JSON
-        echo json_encode($itens_carrinho);
+        // Retornar os dados em formato JSON  - REMOVE THE SECOND PARAMETER
+        echo json_encode($usuarios);
     } else {
         // Caso não haja registros, retorna uma mensagem
         echo json_encode(array(

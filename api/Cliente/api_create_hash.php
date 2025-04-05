@@ -2,14 +2,14 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$host = 'devweb3sql.mysql.dbaas.com.br';
-$dbname = 'devweb3sql';
-$user = 'devweb3sql';
-$pass = 'h2023_FaTEC#$';
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 try {
     // Conectar ao banco de dados
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {

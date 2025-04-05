@@ -77,6 +77,7 @@ const UserProfileForm = () => {
           setEmail(usuario.email);
           setTelefone(usuario.telefone);
         } else {
+          //<Button title="Logout" onPress={signOut} />;
           setError('Usuário não encontrado.');
         }
       } catch (err) {

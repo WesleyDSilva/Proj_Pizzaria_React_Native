@@ -3,12 +3,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Conectar ao banco de dados com MySQLi
-$servername = "devweb3sql.mysql.dbaas.com.br";
-$username = "devweb3sql";
-$password = "h2023_FaTEC#$";
-$dbname = "devweb3sql";
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+$conn = new mysqli($host, $username, $password, $dbname);
 
 // Verificar conexão
 if ($conn->connect_error) {

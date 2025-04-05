@@ -1,12 +1,12 @@
 <?php
 // Configuração do banco de dados
-$host = "devweb3sql.mysql.dbaas.com.br";
-$username = "devweb3sql";
-$password = "h2023_FaTEC#$";
-$database = "devweb3sql"; // Substitua pelo nome do seu banco de dados
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 // Conexão com o banco de dados usando mysqli
-$conexao = mysqli_connect($host, $username, $password, $database);
+$conexao = mysqli_connect($host, $username, $password, $dbname);
 if (!$conexao) {
     echo json_encode(array(
         'error' => true,

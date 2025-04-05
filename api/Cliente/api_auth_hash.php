@@ -2,13 +2,13 @@
 header("Content-Type: application/json");
 
 // Configuração do banco de dados
-$host = 'devweb3sql.mysql.dbaas.com.br';
-$dbname = 'devweb3sql';
-$user = 'devweb3sql';
-$pass = 'h2023_FaTEC#$';
+$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
+$dbname = 'wesley'; // Nome do banco de dados
+$username = 'wesley'; // Nome de usuário do banco de dados
+$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     echo json_encode(array('success' => false, 'message' => 'Erro de conexão com o banco de dados.', 'error' => $e->getMessage()));
