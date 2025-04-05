@@ -6,26 +6,26 @@ import React, {
   ReactNode,
   useCallback,
 } from 'react';
-// Certifique-se que o caminho para CarrinhoItem está correto
-// Normalmente, interfaces são definidas em arquivos separados ou no próprio contexto se não forem muito complexas.
-// Se CarrinhoItem está definido em outro lugar, importe de lá. Senão, defina aqui:
+
+// Defina a interface CarrinhoItem AQUI e inclua TODAS as propriedades
 export interface CarrinhoItem {
-  id: number;
-  pizza_id: number;
+  id: number; // ID único do item no carrinho (vindo de carrinho_id da API)
+  pizza_id: number; // ID do tipo da pizza
   preco: number;
   nome_pizza: string;
   tipo_pizza: string;
-  cliente_id?: number; // Permitindo undefined ou número
+  cliente_id?: number;
+  caminho_imagem?: string; // <-- ADICIONE ESTA LINHA (opcional)
 }
 
 // Interface definindo o que o contexto vai fornecer
 interface CarrinhoContextProps {
   carrinho: CarrinhoItem[];
-  setCarrinho: React.Dispatch<React.SetStateAction<CarrinhoItem[]>>; // Mantido para fetchCarrinho no componente
-  adicionarPizza: (pizza: CarrinhoItem) => void; // Nome correto
-  removerPizza: (itemId: number) => void; // Remove UMA instância pelo ID único do item
-  removerTodasAsPizzasDoTipo: (pizzaId: number) => void; // Remove TODAS as instâncias de um tipo de pizza
-  limparCarrinho: () => void; // Limpa todo o carrinho
+  setCarrinho: React.Dispatch<React.SetStateAction<CarrinhoItem[]>>;
+  adicionarPizza: (pizza: CarrinhoItem) => void; // Não usado diretamente, mas pode ser útil
+  removerPizza: (itemId: number) => void; // Remove pelo ID único do item no carrinho
+  removerTodasAsPizzasDoTipo: (pizzaId: number) => void; // Remove pelo ID da pizza
+  limparCarrinho: () => void;
 }
 
 // Cria o contexto
@@ -46,10 +46,15 @@ export const useCarrinho = () => {
 export const CarrinhoProvider: React.FC<{children: ReactNode}> = ({
   children,
 }) => {
+  // O estado agora usa a interface CarrinhoItem atualizada
   const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
 
+  // Função mantida para permitir que fetchCarrinho no componente atualize o estado
+  // Adicionar direto no contexto pode causar dessincronia se a API falhar
   const adicionarPizza = useCallback((pizza: CarrinhoItem) => {
-    console.log('CONTEXTO: Adicionando pizza:', pizza);
+    // Esta função pode não ser ideal se você sempre depende do fetch para adicionar.
+    // Mas a mantemos se houver outros usos.
+    console.log('CONTEXTO: Adicionando pizza (estado local):', pizza);
     setCarrinho(prev => [...prev, pizza]);
   }, []);
 
@@ -77,9 +82,10 @@ export const CarrinhoProvider: React.FC<{children: ReactNode}> = ({
     setCarrinho([]);
   }, []);
 
+  // O valor do contexto usa o estado com o tipo correto
   const contextValue: CarrinhoContextProps = {
     carrinho,
-    setCarrinho,
+    setCarrinho, // Expondo setCarrinho é crucial para fetchCarrinho funcionar
     adicionarPizza,
     removerPizza,
     removerTodasAsPizzasDoTipo,
