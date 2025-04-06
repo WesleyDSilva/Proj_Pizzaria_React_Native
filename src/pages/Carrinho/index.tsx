@@ -9,6 +9,9 @@ import {
   TouchableOpacity,
   Image,
   Platform,
+  Modal, // <-- Imported Modal
+  TextInput, // <-- Imported TextInput
+  KeyboardAvoidingView, // <-- Imported KeyboardAvoidingView
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
@@ -16,6 +19,7 @@ import {AuthContext} from '../../contexts/AuthContext';
 import {useCarrinho, CarrinhoItem} from '../../contexts/CarrinhoContext';
 import {useFocusEffect} from '@react-navigation/native';
 
+// *** ADDED INTERFACE DEFINITION BACK ***
 // Interface for grouped items in the FlatList
 interface GrupoCarrinhoItem {
   key: string;
@@ -28,23 +32,38 @@ interface GrupoCarrinhoItem {
   primeiroItemId: number;
   caminho_imagem?: string;
 }
+// *** END ADDED INTERFACE DEFINITION ***
 
 // API URL to fetch the cart
 const API_GET_CARRINHO_URL =
   'https://devweb3.ok.etc.br/api/api_get_carrinho.php';
 
+// --- Define the correct URL for the create order PHP script ---
+const API_CRIAR_PEDIDO_URL =
+  'https://devweb3.ok.etc.br/api/api_criar_pedido.php'; // <-- Confirm this is correct
+
 const Carrinho = () => {
   const {user} = useContext(AuthContext);
-  const {carrinho, setCarrinho, removerPizza, removerTodasAsPizzasDoTipo} =
-    useCarrinho();
+  // Assuming limparCarrinho exists in your context
+  const {
+    carrinho,
+    setCarrinho,
+    removerPizza,
+    removerTodasAsPizzasDoTipo,
+    limparCarrinho,
+  } = useCarrinho();
+  // const navigation = useNavigation(); // <-- Initialize navigation hook if needed to navigate away
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [itemLoading, setItemLoading] = useState<{[key: string]: boolean}>({});
   const [deletingAllType, setDeletingAllType] = useState<number | null>(null);
-  // --- NEW STATE for heart flash ---
   const [favoritingItemKey, setFavoritingItemKey] = useState<string | null>(
     null,
   );
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [observacao, setObservacao] = useState('');
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // --- Fetch Cart Data ---
   const fetchCarrinho = useCallback(async () => {
@@ -63,7 +82,6 @@ const Carrinho = () => {
 
       if (Array.isArray(response.data)) {
         const rawData: any[] = response.data;
-        // console.log('API Raw Data:', JSON.stringify(rawData, null, 2));
         const carrinhoData: CarrinhoItem[] = rawData.map((item: any) => ({
           id: Number(item.carrinho_id),
           pizza_id: Number(item.pizza_id),
@@ -77,8 +95,17 @@ const Carrinho = () => {
       } else if (
         response.data &&
         response.data.error === false &&
+        response.data.message ===
+          'Nenhum item encontrado no carrinho para este cliente.' // Specific check for the PHP message
+      ) {
+        console.log('Cart empty (API response):', response.data.message);
+        setCarrinho([]); // Ensure cart is empty locally
+      } else if (
+        response.data &&
+        response.data.error === false &&
         response.data.message
       ) {
+        // General empty message check
         console.log('Cart empty (API response):', response.data.message);
         setCarrinho([]);
       } else if (response.data && response.data.error === true) {
@@ -86,9 +113,20 @@ const Carrinho = () => {
         setError(response.data.message || 'Error returned by API.');
         setCarrinho([]);
       } else {
-        console.warn('Unexpected API response:', response.data);
-        setCarrinho([]);
-        setError('Error in API response format.');
+        // Handle case where response.data might be null, empty object, or other unexpected format indicating empty
+        if (
+          response.data === null ||
+          (typeof response.data === 'object' &&
+            Object.keys(response.data).length === 0) ||
+          response.data === ''
+        ) {
+          console.log('Cart is empty (received empty or null response).');
+          setCarrinho([]);
+        } else {
+          console.warn('Unexpected API response format:', response.data);
+          setError('Error in API response format.');
+          setCarrinho([]);
+        }
       }
     } catch (err: any) {
       console.error('Error fetching cart (axios/network):', err);
@@ -110,7 +148,7 @@ const Carrinho = () => {
 
   // --- Group Cart Items ---
   const gruposCarrinho = useMemo(() => {
-    const grupos: Map<string, GrupoCarrinhoItem> = new Map();
+    const grupos: Map<string, GrupoCarrinhoItem> = new Map(); // Use the interface here
     carrinho.forEach(item => {
       const groupKey = `${item.pizza_id}-${item.tipo_pizza}`;
       if (grupos.has(groupKey)) {
@@ -119,6 +157,7 @@ const Carrinho = () => {
         g.precoTotalGrupo += item.preco || 0;
       } else {
         grupos.set(groupKey, {
+          // Ensure properties match GrupoCarrinhoItem
           key: groupKey,
           pizza_id: item.pizza_id,
           nome_pizza: item.nome_pizza || 'Pizza',
@@ -142,6 +181,7 @@ const Carrinho = () => {
 
   // --- Item Interaction Handlers ---
   const handleIncrementItem = async (grupo: GrupoCarrinhoItem) => {
+    // Use the interface here
     if (!user?.id) {
       Alert.alert('Error', 'Login required to modify cart.');
       return;
@@ -178,6 +218,7 @@ const Carrinho = () => {
   };
 
   const handleDecrementItem = async (grupo: GrupoCarrinhoItem) => {
+    // Use the interface here
     if (!user?.id) {
       Alert.alert('Error', 'Login required to modify cart.');
       return;
@@ -276,13 +317,12 @@ const Carrinho = () => {
     );
   };
 
-  // --- UPDATED handleFavorite with FLASH ---
   const handleFavorite = async (grupo: GrupoCarrinhoItem) => {
+    // Use the interface here
     if (!user?.id) {
       Alert.alert('Error', 'Login required to favorite.');
       return;
     }
-    // --- Start Flash ---
     setFavoritingItemKey(grupo.key);
 
     const payload = {
@@ -303,7 +343,6 @@ const Carrinho = () => {
       payload.pizzas[0].preco === undefined
     ) {
       Alert.alert('Internal Error', 'Incomplete data to favorite.');
-      // --- End Flash on early return ---
       setFavoritingItemKey(null);
       return;
     }
@@ -332,11 +371,69 @@ const Carrinho = () => {
         err.response?.data?.message || 'Could not favorite pizza.',
       );
     } finally {
-      // --- End Flash ---
-      // Optional: add a small delay so the flash is visible
       setTimeout(() => {
         setFavoritingItemKey(null);
-      }, 300); // 300ms delay example
+      }, 300);
+    }
+  };
+
+  // --- Checkout Function ---
+  const proceedToCheckout = async (obs: string) => {
+    if (!user?.id) {
+      Alert.alert('Erro', 'Usuário não identificado para finalizar o pedido.');
+      setIsModalVisible(false);
+      return;
+    }
+    if (carrinho.length === 0) {
+      Alert.alert(
+        'Carrinho Vazio',
+        'Adicione itens ao carrinho antes de finalizar.',
+      );
+      setIsModalVisible(false);
+      return;
+    }
+
+    setIsCheckingOut(true);
+    setIsModalVisible(false);
+
+    try {
+      const response = await axios.post(API_CRIAR_PEDIDO_URL, {
+        // Use correct API URL
+        cliente_id: user.id,
+        observacao: obs.trim(), // Trim whitespace from observation
+      });
+
+      if (response.data && response.data.success) {
+        Alert.alert(
+          'Pedido Finalizado',
+          `Seu pedido (${
+            response.data.n_pedido || ''
+          }) foi enviado com sucesso!`,
+        );
+        // Clear local cart state
+        if (limparCarrinho) {
+          limparCarrinho();
+        } else {
+          setCarrinho([]);
+        }
+        setObservacao('');
+        // Optional: Navigate
+        // navigation.navigate('OrderConfirmation', { orderId: response.data.n_pedido });
+      } else {
+        Alert.alert(
+          'Erro ao Finalizar',
+          response.data.message || 'Não foi possível registrar o pedido.',
+        );
+      }
+    } catch (checkoutError: any) {
+      console.error('Checkout failed:', checkoutError);
+      Alert.alert(
+        'Erro de Rede',
+        checkoutError.response?.data?.message ||
+          'Não foi possível conectar ao servidor para finalizar o pedido.',
+      );
+    } finally {
+      setIsCheckingOut(false);
     }
   };
 
@@ -367,7 +464,7 @@ const Carrinho = () => {
     );
   }
 
-  if (!loading && gruposCarrinho.length === 0) {
+  if (!loading && gruposCarrinho.length === 0 && !isCheckingOut) {
     return (
       <View style={styles.centered}>
         <Icon
@@ -387,10 +484,10 @@ const Carrinho = () => {
     <View style={styles.container}>
       <Text style={styles.title}>MY CART</Text>
       <FlatList
-        data={gruposCarrinho}
+        data={gruposCarrinho} // Use the grouped data
         keyExtractor={item => item.key}
-        renderItem={({item: grupo}) => {
-          // --- Determine if this item's heart is flashing ---
+        renderItem={({item: grupo}: {item: GrupoCarrinhoItem}) => {
+          // Explicitly type item here
           const isFavoriting = favoritingItemKey === grupo.key;
 
           return (
@@ -445,7 +542,7 @@ const Carrinho = () => {
                           itemLoading[grupo.key] ||
                           deletingAllType === grupo.pizza_id ||
                           grupo.quantidade <= 1 ||
-                          isFavoriting // Disable during flash
+                          isFavoriting
                         }>
                         <Icon
                           name="minus"
@@ -454,7 +551,7 @@ const Carrinho = () => {
                             itemLoading[grupo.key] ||
                             deletingAllType === grupo.pizza_id ||
                             grupo.quantidade <= 1 ||
-                            isFavoriting // Dim color during flash
+                            isFavoriting
                               ? '#adb5bd'
                               : '#D32F2F'
                           }
@@ -477,7 +574,7 @@ const Carrinho = () => {
                         disabled={
                           itemLoading[grupo.key] ||
                           deletingAllType === grupo.pizza_id ||
-                          isFavoriting // Disable during flash
+                          isFavoriting
                         }>
                         <Icon
                           name="plus"
@@ -485,7 +582,7 @@ const Carrinho = () => {
                           color={
                             itemLoading[grupo.key] ||
                             deletingAllType === grupo.pizza_id ||
-                            isFavoriting // Dim color during flash
+                            isFavoriting
                               ? '#adb5bd'
                               : '#388E3C'
                           }
@@ -497,28 +594,22 @@ const Carrinho = () => {
 
                 {/* Icons Column (Heart + Trash) */}
                 <View style={styles.iconsColumn}>
-                  {/* --- UPDATED HEART ICON AREA --- */}
                   <TouchableOpacity
                     onPress={() => handleFavorite(grupo)}
-                    style={styles.iconButton} // Container for the circle
+                    style={styles.iconButton}
                     disabled={
-                      isFavoriting || // Disable while flashing this one
+                      isFavoriting ||
                       itemLoading[grupo.key] ||
                       deletingAllType === grupo.pizza_id
                     }>
                     <View style={styles.heartIconCircle}>
                       <Icon
-                        // Use 'heart' (filled) when flashing, 'heart-o' (outline) otherwise
                         name={isFavoriting ? 'heart' : 'heart-o'}
-                        size={18} // Adjust size to fit well
-                        // Red when flashing, Orange outline otherwise
+                        size={18}
                         color={isFavoriting ? '#FF0000' : 'black'}
                       />
                     </View>
                   </TouchableOpacity>
-                  {/* --- END UPDATED HEART ICON AREA --- */}
-
-                  {/* Trash Icon */}
                   <TouchableOpacity
                     style={styles.trashButtonContainer}
                     onPress={() =>
@@ -527,7 +618,7 @@ const Carrinho = () => {
                     disabled={
                       deletingAllType === grupo.pizza_id ||
                       itemLoading[grupo.key] ||
-                      isFavoriting // Disable trash during favorite flash
+                      isFavoriting
                     }>
                     <View style={styles.trashIconCircle}>
                       {deletingAllType === grupo.pizza_id ? (
@@ -538,14 +629,11 @@ const Carrinho = () => {
                     </View>
                   </TouchableOpacity>
                 </View>
-                {/* End Icons Column */}
               </View>
-              {/* End Content Area Row */}
             </View>
           );
-          // --- End List Item ---
         }}
-        ListFooterComponent={() => <View style={{height: 110}} />} // Space at the bottom
+        ListFooterComponent={() => <View style={{height: 110}} />}
       />
 
       {/* Fixed Footer */}
@@ -555,30 +643,95 @@ const Carrinho = () => {
           <Text style={styles.totalValue}>R$ {total.toFixed(2)}</Text>
         </View>
         <TouchableOpacity
-          style={styles.checkoutButton}
-          onPress={() =>
-            Alert.alert(
-              'Finalizar Pedido',
-              'Funcionalidade ainda não implementada.',
-            )
-          }>
-          <Text style={styles.checkoutButtonText}>Finalizar Pedido</Text>
+          style={[
+            styles.checkoutButton,
+            isCheckingOut && styles.checkoutButtonDisabled,
+          ]}
+          onPress={() => setIsModalVisible(true)}
+          disabled={isCheckingOut || carrinho.length === 0}>
+          {isCheckingOut ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.checkoutButtonText}>Finalizar Pedido</Text>
+          )}
         </TouchableOpacity>
       </View>
+
+      {/* Observation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isModalVisible}
+        onRequestClose={() => {
+          if (!isCheckingOut) {
+            setIsModalVisible(false);
+            setObservacao('');
+          }
+        }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Observações</Text>
+            <Text style={styles.modalSubTitle}>
+              Deseja adicionar alguma observação ao pedido?
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Ex: Tirar a cebola, ponto da carne..."
+              placeholderTextColor="#999"
+              multiline={true}
+              numberOfLines={4}
+              value={observacao}
+              onChangeText={setObservacao}
+              textAlignVertical="top"
+            />
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setIsModalVisible(false);
+                  setObservacao('');
+                }}
+                disabled={isCheckingOut}>
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.confirmButton,
+                  isCheckingOut && styles.checkoutButtonDisabled,
+                ]}
+                onPress={() => proceedToCheckout(observacao)}
+                disabled={isCheckingOut}>
+                {isCheckingOut ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>
+                    {observacao.trim()
+                      ? 'Salvar e Finalizar'
+                      : 'Finalizar sem Obs.'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
 
 // --- Styles ---
 const IMAGE_SIZE = 55;
-const IMAGE_BORDER_SPACE = 10; // Space around image inside border
+const IMAGE_BORDER_SPACE = 10;
 const BORDER_THICKNESS = 2;
-const IMAGE_CONTAINER_SIZE = IMAGE_SIZE + IMAGE_BORDER_SPACE * 2; // Outer container size
+const IMAGE_CONTAINER_SIZE = IMAGE_SIZE + IMAGE_BORDER_SPACE * 2;
 const TRASH_CIRCLE_SIZE = 32;
 const TRASH_BORDER_WIDTH = 1;
-const ICON_COLUMN_WIDTH = 40; // Width for the rightmost icons column
-const HEART_CIRCLE_SIZE = 32; // Size for the heart's circle
-const HEART_BORDER_THICKNESS = 2; // Border for the heart's circle
+const ICON_COLUMN_WIDTH = 40;
+const HEART_CIRCLE_SIZE = 32;
+const HEART_BORDER_THICKNESS = 2;
 
 const styles = StyleSheet.create({
   container: {
@@ -593,7 +746,6 @@ const styles = StyleSheet.create({
     color: '#343a40',
     textAlign: 'center',
   },
-  // --- Item Row Container ---
   itemContainer: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
@@ -604,23 +756,22 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.15,
     shadowRadius: 5,
-    flexDirection: 'row', // Image | contentAreaRow
+    flexDirection: 'row',
     paddingVertical: 12,
     paddingLeft: 12,
-    paddingRight: 10, // Reduced right padding
-    alignItems: 'flex-start', // Align image and content area to top
+    paddingRight: 10,
+    alignItems: 'flex-start',
   },
-  // --- Image Styles ---
   imageBorderContainer: {
     width: IMAGE_CONTAINER_SIZE,
     height: IMAGE_CONTAINER_SIZE,
     borderRadius: IMAGE_CONTAINER_SIZE / 2,
     borderWidth: BORDER_THICKNESS,
-    borderColor: '#FFA500', // Orange
+    borderColor: '#FFA500',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFEACE', // Light orange background
-    marginRight: 12, // Space after image before content area
+    backgroundColor: '#FFEACE',
+    marginRight: 12,
   },
   pizzaImage: {
     width: IMAGE_SIZE,
@@ -635,26 +786,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // --- Content Area (Row: Info | Icons) ---
   contentAreaRow: {
-    flex: 1, // Take remaining space
-    flexDirection: 'row', // Info Column | Icons Column
-    justifyContent: 'space-between', // Pushes Icons column to the right
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-
-  // --- Info Column (Name/Price + Quantity Group) ---
   infoColumn: {
-    flexDirection: 'column', // Arrange vertically
-    flexShrink: 1, // Allow this column to shrink if needed
-    paddingRight: 8, // Space before the icons column
-    justifyContent: 'space-between', // Distribute space between name/price and quantity
-    minHeight: IMAGE_CONTAINER_SIZE - BORDER_THICKNESS * 2, // Match image height approx
+    flexDirection: 'column',
+    flexShrink: 1,
+    paddingRight: 8,
+    justifyContent: 'space-between',
+    minHeight: IMAGE_CONTAINER_SIZE - BORDER_THICKNESS * 2,
   },
-  namePriceContainer: {
-    // Contains Name and Price
-    // No specific styles needed here now
-  },
+  namePriceContainer: {},
   itemTextName: {
     fontSize: 15,
     fontWeight: '600',
@@ -667,17 +811,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   quantityGroupContainer: {
-    // Container for the +/- group
-    marginTop: 8, // Add space above quantity if needed
+    marginTop: 8,
   },
   quantityGroupBackground: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFEACE', // Light orange background
+    backgroundColor: '#FFEACE',
     borderRadius: 18,
     paddingHorizontal: 5,
     height: 36,
-    alignSelf: 'flex-start', // Make group only as wide as needed
+    alignSelf: 'flex-start',
   },
   quantityCtrlButton: {
     paddingHorizontal: 10,
@@ -696,49 +839,38 @@ const styles = StyleSheet.create({
     color: '#343a40',
     textAlign: 'center',
   },
-
-  // --- Icons Column (Heart + Trash) ---
   iconsColumn: {
     flexDirection: 'column',
-    justifyContent: 'space-between', // Space out Heart and Trash vertically
-    alignItems: 'center', // Center icons horizontally in this column
-    width: ICON_COLUMN_WIDTH, // Fixed width for alignment
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: ICON_COLUMN_WIDTH,
   },
-  // --- UPDATED Heart Icon Styles ---
   iconButton: {
-    // Container for the heart circle touchable
-    // Layout handled by iconsColumn
-    marginBottom: 4, // Add space between heart and trash
+    marginBottom: 4,
   },
   heartIconCircle: {
-    // The orange circle itself
     width: HEART_CIRCLE_SIZE,
     height: HEART_CIRCLE_SIZE,
     borderRadius: HEART_CIRCLE_SIZE / 2,
     borderWidth: HEART_BORDER_THICKNESS,
-    borderColor: '#FFA500', // Orange border
+    borderColor: '#FFA500',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFA500', // White background inside circle
+    backgroundColor: '#fff',
   },
-  // --- Trash Icon Styles ---
   trashButtonContainer: {
-    // Container for the trash circle touchable
-    // Layout handled by iconsColumn
-    marginTop: 4, // Add space between heart and trash
+    marginTop: 4,
   },
   trashIconCircle: {
     width: TRASH_CIRCLE_SIZE,
     height: TRASH_CIRCLE_SIZE,
     borderRadius: TRASH_CIRCLE_SIZE / 2,
-    backgroundColor: '#FFEACE',
+    backgroundColor: '#e9ecef',
     borderWidth: TRASH_BORDER_WIDTH,
-    borderColor: '#FFA500',
+    borderColor: '#dee2e6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // --- Centered States ---
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -787,7 +919,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  // --- Footer ---
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -828,11 +959,100 @@ const styles = StyleSheet.create({
     paddingHorizontal: 35,
     borderRadius: 30,
     elevation: 3,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkoutButtonDisabled: {
+    backgroundColor: '#94d3a2',
   },
   checkoutButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // --- MODAL STYLES ---
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  modalSubTitle: {
+    fontSize: 15,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  textInput: {
+    width: '100%',
+    height: 100,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 15,
+    marginBottom: 25,
+    fontSize: 15,
+    textAlignVertical: 'top',
+    backgroundColor: '#f8f8f8',
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    elevation: 2,
+    flex: 1,
+    marginHorizontal: 8,
+    minWidth: 100,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  cancelButtonText: {
+    color: '#495057',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 15,
+  },
+  confirmButton: {
+    backgroundColor: '#28a745',
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 15,
   },
 });
 
