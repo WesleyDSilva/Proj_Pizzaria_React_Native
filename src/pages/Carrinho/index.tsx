@@ -385,7 +385,7 @@ const Carrinho = () => {
   // --- Main Render ---
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>MY CART</Text>
+      <Text style={styles.title}>MEU CARRINHO</Text>
       <FlatList
         data={gruposCarrinho}
         keyExtractor={item => item.key}
