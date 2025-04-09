@@ -16,7 +16,7 @@ import axios from 'axios';
 import {useCarrinho} from '../../contexts/CarrinhoContext';
 import {AuthContext} from '../../contexts/AuthContext';
 
-// Interface Pizza
+// Interface Pizza (corresponde à nova API)
 interface Pizza {
   id: number;
   nome: string;
@@ -38,17 +38,71 @@ export default function Feed() {
 
   useEffect(() => {
     const fetchPizzas = async () => {
+      setLoading(true);
       try {
-        const response = await axios.get<Pizza[]>(
-          'https://devweb3.ok.etc.br/api/api_get_pizzas.php',
+        // <<< CONFIRME SE ESTA É A URL CORRETA DA SUA API ATUALIZADA >>>
+        const response = await axios.get<any[]>(
+          'https://devweb3.ok.etc.br/api/api_get_pizzas_mobile.php',
         );
-        const pizzasComDadosCorrigidos = response.data.map(pizza => ({
-          ...pizza,
-          preco: parseFloat(pizza.preco as unknown as string) || 0,
-        }));
-        setPizzas(pizzasComDadosCorrigidos);
+
+        // --- Data Validation and Processing ---
+        if (!Array.isArray(response.data)) {
+          console.error('Erro: Resposta da API não é um array:', response.data);
+          throw new Error('Invalid API response format');
+        }
+
+        // <<< AJUSTADO PARA O NOVO FORMATO DA API (id, descricao) >>>
+        const pizzasValidas = response.data
+          // 1. Filter usando 'id' (como a nova API retorna)
+          .filter(
+            item =>
+              item &&
+              typeof item === 'object' &&
+              item.id != null && // <-- CORRIGIDO: Usar 'id'
+              item.nome != null,
+          )
+          // 2. Map usando 'id' e 'descricao' (como a nova API retorna)
+          .map(
+            (item): Pizza => ({
+              id: Number(item.id), // <-- CORRIGIDO: Usar 'id'
+              nome: String(item.nome), // Mantém
+              descricao: String(item.descricao || 'Descrição não disponível'), // <-- CORRIGIDO: Usar 'descricao'
+              preco: parseFloat(item.preco as unknown as string) || 0, // Mantém
+              caminho: String(item.caminho || ''), // Mantém
+            }),
+          );
+        // <<< FIM DOS AJUSTES >>>
+
+        // Logs para depuração - Verifique no console do Metro Bundler
+        console.log('API Response Data (Raw):', response.data);
+        console.log('Pizzas Válidas Mapeadas:', pizzasValidas);
+
+        // Verificação adicional se o mapeamento falhou
+        if (pizzasValidas.length === 0 && response.data.length > 0) {
+          console.warn(
+            "FILTRO/MAP RESULTADO VAZIO: Verifique os nomes dos campos ('id', 'descricao') no filter/map e compare com os dados brutos da API acima.",
+          );
+        }
+
+        setPizzas(pizzasValidas);
+        // --- End Data Validation ---
       } catch (error) {
-        console.error('Erro ao buscar os dados:', error);
+        console.error(
+          'Erro ao buscar ou processar os dados das pizzas:',
+          error,
+        );
+        if (axios.isAxiosError(error)) {
+          console.error('Axios error details:', error.toJSON());
+          if (error.response) {
+            console.error('API Response Data (on error):', error.response.data);
+            console.error('API Response Status:', error.response.status);
+          } else if (error.request) {
+            console.error('Axios request error:', error.request);
+          } else {
+            console.error('Axios general error:', error.message);
+          }
+        }
+        setPizzas([]);
       } finally {
         setLoading(false);
       }
@@ -57,8 +111,12 @@ export default function Feed() {
     fetchPizzas();
   }, []);
 
-  // --- Funções handleAddPizza, handleRemovePizza, handleConfirmAddition, handleCancelAddition ---
+  // --- Funções handlers (sem alterações, mantidas como antes) ---
   const handleAddPizza = (pizza: Pizza) => {
+    if (!pizza || pizza.id == null) {
+      console.warn('handleAddPizza called with invalid pizza data:', pizza);
+      return;
+    }
     const currentQuantity = quantities[pizza.id] || 0;
 
     if (currentQuantity === 1) {
@@ -70,6 +128,12 @@ export default function Feed() {
       setSelectedPizzas([pizza]);
       setModalVisible(true);
     } else if (selectedPizzas.length === 1) {
+      if (!selectedPizzas[0] || selectedPizzas[0].id == null) {
+        console.warn('handleAddPizza: Invalid pizza previously selected.');
+        setSelectedPizzas([pizza]);
+        setQuantities({[pizza.id]: 1});
+        return;
+      }
       const previousPizza = selectedPizzas[0];
       setModalMessage(
         `Deseja adicionar meia ${previousPizza.nome} e meia ${
@@ -85,7 +149,14 @@ export default function Feed() {
   };
 
   const handleMenuPizzaClick = (pizza: Pizza) => {
-    if (!user.id) {
+    if (!pizza || pizza.id == null) {
+      console.warn(
+        'handleMenuPizzaClick called with invalid pizza data:',
+        pizza,
+      );
+      return;
+    }
+    if (!user || !user.id) {
       setModalMessage('Você precisa estar logado para adicionar itens.');
       setSelectedPizzas([]);
       setModalVisible(true);
@@ -102,6 +173,10 @@ export default function Feed() {
   };
 
   const handleRemovePizza = (pizza: Pizza) => {
+    if (!pizza || pizza.id == null) {
+      console.warn('handleRemovePizza called with invalid pizza data:', pizza);
+      return;
+    }
     const currentQuantity = quantities[pizza.id] || 0;
     if (currentQuantity > 0) {
       setQuantities(prev => ({
@@ -111,7 +186,7 @@ export default function Feed() {
       if (
         currentQuantity === 1 &&
         selectedPizzas.length === 1 &&
-        selectedPizzas[0].id === pizza.id
+        selectedPizzas[0]?.id === pizza.id
       ) {
         setSelectedPizzas([]);
       }
@@ -119,7 +194,7 @@ export default function Feed() {
   };
 
   const handleConfirmAddition = () => {
-    if (!user.id) {
+    if (!user || !user.id) {
       setModalMessage(
         'Você precisa estar logado para adicionar itens ao carrinho.',
       );
@@ -136,8 +211,17 @@ export default function Feed() {
       return;
     }
 
-    selectedPizzas.forEach(pizza => {
-      const tipoPizza = selectedPizzas.length === 1 ? 'inteira' : 'meia';
+    const validSelectedPizzas = selectedPizzas.filter(p => p && p.id != null);
+    if (validSelectedPizzas.length === 0) {
+      console.warn('handleConfirmAddition: No valid pizzas selected.');
+      setModalVisible(false);
+      setQuantities({});
+      setSelectedPizzas([]);
+      return;
+    }
+
+    validSelectedPizzas.forEach(pizza => {
+      const tipoPizza = validSelectedPizzas.length === 1 ? 'inteira' : 'meia';
       const precoFinal =
         tipoPizza === 'inteira' ? (pizza.preco || 0) * 2 : pizza.preco || 0;
 
@@ -153,7 +237,16 @@ export default function Feed() {
           console.log('Pizza registrada no carrinho:', response.data);
         })
         .catch(error => {
-          console.error('Erro ao registrar pizza no carrinho:', error);
+          console.error(
+            `Erro ao registrar pizza ${pizza.nome} (${pizza.id}) no carrinho:`,
+            error,
+          );
+          if (axios.isAxiosError(error) && error.response) {
+            console.error(
+              'API Error Response (registrar carrinho):',
+              error.response.data,
+            );
+          }
         });
     });
 
@@ -172,71 +265,88 @@ export default function Feed() {
       setQuantities({});
       setSelectedPizzas([]);
     }
+    setModalMessage('');
   };
 
-  const filteredPizzas = pizzas.filter(pizza =>
-    pizza.nome.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  // Filter pizzas based on search query
+  const filteredPizzas = searchQuery
+    ? pizzas.filter(pizza =>
+        pizza.nome.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : pizzas;
 
-  // Render item para a lista principal (vertical) - SEM IMAGEM
+  // Render item for the main list
   const renderItem = ({item}: {item: Pizza}) => (
     <View style={styles.itemContainer}>
       <View style={styles.row}>
         <TouchableOpacity onPress={() => handleRemovePizza(item)}>
           <Icon name="minus-circle" size={25} color="#ff6347" />
         </TouchableOpacity>
-        <Text style={styles.quantity}>{quantities[item.id] || 0}</Text>
+        <Text style={styles.quantity}>{quantities[item?.id] || 0}</Text>
         <TouchableOpacity onPress={() => handleAddPizza(item)}>
           <Icon name="plus-circle" size={25} color="#32cd32" />
         </TouchableOpacity>
         <Text style={styles.itemTitle}>
-          {item.nome || 'Nome não disponível'}
+          {item?.nome || 'Nome Indisponível'}
         </Text>
       </View>
+      {/* Exibe a descrição vinda da API */}
       <Text style={styles.itemDescription}>
-        {item.descricao || 'Descrição não disponível'}
+        {item?.descricao || 'Descrição Indisponível'}
       </Text>
-      <Text style={styles.itemPrice}>{`R$ ${item.preco.toFixed(2)}`}</Text>
+      <Text style={styles.itemPrice}>{`R$ ${(item?.preco ?? 0).toFixed(
+        2,
+      )}`}</Text>
     </View>
   );
 
-  // Render item para a lista horizontal (menu) - Chama handleMenuPizzaClick
+  // Render item for menu - Com renderização condicional da imagem
   const renderMenuItem = ({item}: {item: Pizza}) => (
     <TouchableOpacity
       style={styles.menuItemOuterContainer}
-      onPress={() => handleMenuPizzaClick(item)}>
+      onPress={() => handleMenuPizzaClick(item)}
+      disabled={!item || item.id == null}>
       <View style={styles.menuItemImageBackground}>
-        <Image
-          source={{uri: item.caminho}}
-          style={styles.menuItemImage}
-          onError={e =>
-            console.log(
-              `Erro ao carregar imagem (menu) ${item.caminho}:`,
-              e.nativeEvent.error,
-            )
-          }
-        />
+        {item?.caminho ? (
+          <Image
+            source={{uri: item.caminho}}
+            style={styles.menuItemImage}
+            onError={e =>
+              console.log(
+                `Erro ao carregar imagem (menu) ${item?.caminho}:`,
+                e.nativeEvent.error,
+              )
+            }
+          />
+        ) : (
+          <View style={[styles.menuItemImage, {backgroundColor: '#ddd'}]} />
+        )}
       </View>
-      <Text style={styles.menuItemText}>{item.nome}</Text>
+      <Text style={styles.menuItemText}>{item?.nome || '???'}</Text>
     </TouchableOpacity>
   );
 
+  // --- JSX Structure ---
   return (
     <View style={styles.container}>
+      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
           placeholder="Busque por nome da pizza..."
           value={searchQuery}
           onChangeText={setSearchQuery}
+          placeholderTextColor="#999"
         />
         <View style={styles.searchIconContainer}>
           <Icon name="search" size={18} color="#fff" />
         </View>
       </View>
 
+      {/* Horizontal Menu */}
       <View style={styles.menuContainer}>
-        {loading ? (
+        {/* Loader inicial */}
+        {loading && pizzas.length === 0 ? ( // Mostra loader se carregando E sem pizzas
           <ActivityIndicator
             style={{paddingVertical: 20}}
             size="small"
@@ -244,48 +354,59 @@ export default function Feed() {
           />
         ) : (
           <FlatList
-            data={pizzas}
-            keyExtractor={item => `menu-${item.id.toString()}`}
+            data={pizzas} // Usa o estado 'pizzas' mapeado corretamente
+            keyExtractor={(item, index) =>
+              item?.id != null ? `menu-${item.id}` : `menu-fallback-${index}`
+            }
             horizontal={true}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.menuList}
             renderItem={renderMenuItem}
             ListEmptyComponent={
-              <Text style={styles.emptyMenu}>Carregando pizzas...</Text>
+              !loading ? ( // Só mostra se não estiver carregando
+                <Text style={styles.emptyMenu}>Nenhuma pizza no menu.</Text>
+              ) : null
             }
           />
         )}
       </View>
 
-      {/* --- BANNER --- */}
+      {/* Banner */}
       <View style={styles.banner}>
         <Image
-          source={require('../../assets/banner.png')}
-          style={styles.bannerImage} // Aplicando estilo à imagem do banner
+          source={require('../../assets/banner.png')} // Atenção a este caminho!
+          style={styles.bannerImage}
           onError={e =>
             console.log('Erro ao carregar banner:', e.nativeEvent.error)
-          } // Verificar erro de carregamento
+          }
         />
       </View>
-      {/* --- FIM BANNER --- */}
 
-      {loading && pizzas.length === 0 ? (
+      {/* Main Vertical List */}
+      {/* Loader ou lista/vazio */}
+      {loading && pizzas.length === 0 ? ( // Mostra loader se carregando E sem pizzas
         <ActivityIndicator
-          style={{marginTop: 20}} // Reduzido marginTop devido ao banner
+          style={{marginTop: 50}}
           size="large"
-          color="#0000ff"
+          color="#FFA500"
         />
       ) : (
         <FlatList
-          data={filteredPizzas}
-          keyExtractor={item => `main-${item.id.toString()}`}
+          data={filteredPizzas} // Lista filtrada pela busca
+          keyExtractor={(item, index) =>
+            item?.id != null ? `main-${item.id}` : `main-fallback-${index}`
+          }
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty}>
-              {searchQuery
-                ? 'Nenhuma pizza encontrada para sua busca.'
-                : 'Nenhuma pizza disponível.'}
+              {
+                searchQuery
+                  ? 'Nenhuma pizza encontrada para sua busca.'
+                  : !loading && pizzas.length === 0 // Condição chave aqui!
+                  ? 'Nenhuma pizza disponível no momento.' // Mostra APENAS se não está carregando E pizzas está vazio
+                  : 'Nenhuma pizza disponível.' // Caso padrão (não deve ocorrer se a lógica acima estiver ok)
+              }
             </Text>
           }
         />
@@ -303,32 +424,28 @@ export default function Feed() {
             <View style={styles.modalButtons}>
               {modalMessage !==
                 'Você precisa estar logado para adicionar itens.' &&
-                modalMessage !==
-                  'Você precisa estar logado para adicionar itens ao carrinho.' && (
+              modalMessage !==
+                'Você precisa estar logado para adicionar itens ao carrinho.' ? (
+                <>
                   <Button
                     title="Adicionar"
                     onPress={handleConfirmAddition}
                     color="#FFA500"
                   />
-                )}
-              {modalMessage !==
-                'Você precisa estar logado para adicionar itens.' &&
-                modalMessage !==
-                  'Você precisa estar logado para adicionar itens ao carrinho.' && (
                   <View style={{width: 10}} />
-                )}
-              <Button
-                title={
-                  modalMessage ===
-                    'Você precisa estar logado para adicionar itens.' ||
-                  modalMessage ===
-                    'Você precisa estar logado para adicionar itens ao carrinho.'
-                    ? 'OK'
-                    : 'Cancelar'
-                }
-                onPress={handleCancelAddition}
-                color="#ff6347"
-              />
+                  <Button
+                    title="Cancelar"
+                    onPress={handleCancelAddition}
+                    color="#ff6347"
+                  />
+                </>
+              ) : (
+                <Button
+                  title="OK"
+                  onPress={handleCancelAddition}
+                  color="#FFA500"
+                />
+              )}
             </View>
           </View>
         </View>
@@ -337,7 +454,7 @@ export default function Feed() {
   );
 }
 
-// --- Estilos ---
+// --- Estilos --- (Mantidos como antes)
 const IMAGE_SIZE = 55;
 const BORDER_WIDTH = 2;
 const IMAGE_WITH_BORDER_SIZE = IMAGE_SIZE + BORDER_WIDTH * 2;
@@ -366,6 +483,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 15,
+    color: '#333',
   },
   searchIconContainer: {
     backgroundColor: '#FFA500',
@@ -380,7 +498,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 10,
     backgroundColor: '#f8f8f8',
-    marginBottom: 5, // Reduzido espaço antes do banner
+    marginBottom: 5,
   },
   menuList: {
     paddingHorizontal: 10,
@@ -390,6 +508,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 8,
     minWidth: IMAGE_WITH_BORDER_SIZE + 10,
+    maxWidth: IMAGE_WITH_BORDER_SIZE + 30,
   },
   menuItemImageBackground: {
     width: IMAGE_WITH_BORDER_SIZE,
@@ -411,6 +530,7 @@ const styles = StyleSheet.create({
     borderRadius: IMAGE_SIZE / 2,
     borderWidth: BORDER_WIDTH,
     borderColor: '#fff',
+    backgroundColor: '#eee',
   },
   menuItemText: {
     color: '#555',
@@ -418,43 +538,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 2,
+    flexWrap: 'wrap',
   },
   emptyMenu: {
     paddingHorizontal: 20,
     color: '#999',
+    textAlign: 'center',
+    width: '100%',
   },
-  // Estilo para o container do Banner
   banner: {
-    width: '100%', // Ocupa toda a largura disponível
-    alignItems: 'center', // Centraliza o conteúdo (Image) horizontalmente
-    paddingVertical: 10, // Espaçamento vertical (ajuste conforme necessário)
-    // justifyContent: 'center', // Centraliza verticalmente dentro do padding (opcional)
-    marginBottom: 10, // Espaço abaixo do banner
-    marginLeft: 6,
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginBottom: 10,
   },
-  // Estilo para a Imagem do Banner (opcional, mas recomendado)
   bannerImage: {
-    width: '95%', // Exemplo: 95% da largura do container
-    // height: 150, // Defina uma altura ou use aspectRatio
-    height: undefined, // Necessário para aspectRatio funcionar corretamente
-    aspectRatio: 16 / 6, // Exemplo de proporção (ajuste para a proporção real da sua imagem)
-    resizeMode: 'contain', // Ou 'cover', 'stretch'
-    borderRadius: 8, // Opcional: bordas arredondadas
+    width: '95%',
+    height: undefined,
+    aspectRatio: 16 / 6,
+    resizeMode: 'contain',
+    borderRadius: 8,
   },
   list: {
     width: '100%',
     paddingHorizontal: 16,
     paddingBottom: 20,
-    // paddingTop: 10, // Adiciona espaço acima da lista principal
   },
   itemContainer: {
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     backgroundColor: '#fff',
-    marginHorizontal: 5,
     marginBottom: 10,
-    borderRadius: 5,
+    borderRadius: 8,
+    elevation: 1,
   },
   row: {
     flexDirection: 'row',
@@ -462,17 +579,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   itemTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
-    marginLeft: 10,
+    marginLeft: 12,
     color: '#333',
     flex: 1,
   },
   itemDescription: {
     fontSize: 14,
     color: '#666',
-    marginLeft: 45,
-    marginBottom: 5,
+    marginLeft: 45 + 12,
+    marginBottom: 8,
   },
   itemPrice: {
     fontSize: 16,
@@ -480,6 +597,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     alignSelf: 'flex-end',
     marginRight: 10,
+    marginTop: 4,
   },
   quantity: {
     fontSize: 18,
@@ -489,7 +607,6 @@ const styles = StyleSheet.create({
     minWidth: 25,
     textAlign: 'center',
   },
-  controls: {},
   empty: {
     textAlign: 'center',
     fontSize: 16,
@@ -510,6 +627,10 @@ const styles = StyleSheet.create({
     width: '85%',
     alignItems: 'center',
     elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   modalMessage: {
     fontSize: 18,
