@@ -231,9 +231,12 @@ const Carrinho = () => {
 
     if (!itemParaRemover) {
       console.error(
-        `Error: Could not find cart item for group ${grupo.key} to remove.`,
+        `Error: Não foi possível encontrar o carrinho no grupo ${grupo.key} para remover.`,
       );
-      Alert.alert('Internal Error', 'Could not identify item to remove.');
+      Alert.alert(
+        'Internal Error',
+        'Não foi possível identificar o item a ser removido.',
+      );
       return;
     }
     const idParaRemover = itemParaRemover.id;
@@ -249,14 +252,14 @@ const Carrinho = () => {
         console.error('API error removing item:', res.data);
         Alert.alert(
           'Error Removing',
-          res.data.message || 'Could not remove item from cart.',
+          res.data.message || 'Não foi possível remover.',
         );
       }
     } catch (err: any) {
       console.error('Network/axios error decrementing item:', err);
       Alert.alert(
         'Network Error',
-        err.response?.data?.message || 'Could not remove item.',
+        err.response?.data?.message || 'Não foi possível remover.',
       );
     } finally {
       setItemLoading(prev => ({...prev, [grupo.key]: false}));
@@ -268,16 +271,16 @@ const Carrinho = () => {
     nome_pizza: string,
   ) => {
     if (!user?.id) {
-      Alert.alert('Error', 'Login required to modify cart.');
+      Alert.alert('Error', 'Login necessário para modificar o carrinho.');
       return;
     }
     Alert.alert(
-      'Remove All?',
-      `Are you sure you want to remove all "${nome_pizza}" pizzas from the cart?`,
+      'Remover tudo?',
+      `Tem certeza que deseja remover "${nome_pizza}" do carrinho?`,
       [
-        {text: 'Cancel', style: 'cancel'},
+        {text: 'Cancelar', style: 'cancel'},
         {
-          text: 'Remove',
+          text: 'Remover',
           style: 'destructive',
           onPress: async () => {
             setDeletingAllType(pizza_id);
@@ -295,7 +298,7 @@ const Carrinho = () => {
               } else {
                 Alert.alert(
                   'Error Removing',
-                  res.data.message || 'Could not remove items from cart.',
+                  res.data.message || 'Não foi possível remover.',
                 );
               }
             } catch (err: any) {
@@ -305,7 +308,7 @@ const Carrinho = () => {
               );
               Alert.alert(
                 'Network Error',
-                err.response?.data?.message || 'Could not remove items.',
+                err.response?.data?.message || 'Não foi possível remover.',
               );
             } finally {
               setDeletingAllType(null);
@@ -320,7 +323,7 @@ const Carrinho = () => {
   const handleFavorite = async (grupo: GrupoCarrinhoItem) => {
     // Use the interface here
     if (!user?.id) {
-      Alert.alert('Error', 'Login required to favorite.');
+      Alert.alert('Error', 'Login necessário para favoritar.');
       return;
     }
     setFavoritingItemKey(grupo.key);
@@ -342,7 +345,7 @@ const Carrinho = () => {
       !payload.pizzas[0].nome_pizza ||
       payload.pizzas[0].preco === undefined
     ) {
-      Alert.alert('Internal Error', 'Incomplete data to favorite.');
+      Alert.alert('Internal Error', 'Dados incompletos para favoritar.');
       setFavoritingItemKey(null);
       return;
     }
@@ -355,20 +358,20 @@ const Carrinho = () => {
 
       if (res.data.success) {
         Alert.alert(
-          'Favorited!',
-          `"${grupo.nome_pizza}" added to your favorites.`,
+          'Favoritado!',
+          `"${grupo.nome_pizza}"Adicionado aos favoritos.`,
         );
       } else {
         Alert.alert(
           'Error Favoriting',
-          res.data.message || 'Could not favorite pizza.',
+          res.data.message || 'Não foi possível favoritar.',
         );
       }
     } catch (err: any) {
-      console.error('Error favoriting:', err);
+      console.error('Error ao favoritar:', err);
       Alert.alert(
         'Network Error',
-        err.response?.data?.message || 'Could not favorite pizza.',
+        err.response?.data?.message || 'Não foi possível favoritar.',
       );
     } finally {
       setTimeout(() => {
@@ -458,7 +461,7 @@ const Carrinho = () => {
         />
         <Text style={styles.error}>{error}</Text>
         <TouchableOpacity onPress={fetchCarrinho} style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.retryButtonText}>Tente novamente</Text>
         </TouchableOpacity>
       </View>
     );
@@ -473,8 +476,8 @@ const Carrinho = () => {
           color="#adb5bd"
           style={styles.iconEmpty}
         />
-        <Text style={styles.message}>Your cart is empty.</Text>
-        <Text style={styles.messageSub}>Add some pizzas to see them here!</Text>
+        <Text style={styles.message}>Seu carrinho está vazio.</Text>
+        <Text style={styles.messageSub}>Adicione algumas pizas.</Text>
       </View>
     );
   }
@@ -482,7 +485,7 @@ const Carrinho = () => {
   // --- Main Render ---
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>MY CART</Text>
+      <Text style={styles.title}>MEU CARRINHO</Text>
       <FlatList
         data={gruposCarrinho} // Use the grouped data
         keyExtractor={item => item.key}
