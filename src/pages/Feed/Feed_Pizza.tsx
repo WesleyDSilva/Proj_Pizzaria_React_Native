@@ -2,7 +2,7 @@ import React, {useEffect, useState, useContext} from 'react';
 import {
   StyleSheet,
   Text,
-  View, // View é necessária
+  View,
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
@@ -10,135 +10,199 @@ import {
   Image,
   Button,
   TextInput,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
-import {useCarrinho} from '../../contexts/CarrinhoContext';
 import {AuthContext} from '../../contexts/AuthContext';
+import {Picker} from '@react-native-picker/picker';
 
-// Interface Pizza (corresponde à nova API)
+// --- Interfaces ---
 interface Pizza {
   id: number;
   nome: string;
-  descricao: string;
   preco: number;
+  ingredientes: string;
+  detalhes?: string;
   caminho: string;
+  categoria: string;
+  tamanho?: string;
+}
+
+interface ApiProdutoItem {
+  produto_id: string | number;
+  nome: string;
+  preco: string | number;
+  tamanho: string | number;
+  ingredientes: string;
+  detalhes?: string;
+  caminho: string;
+  categoria: string;
 }
 
 export default function Feed() {
-  const {adicionarPizza} = useCarrinho();
   const {user} = useContext(AuthContext);
-  const [pizzas, setPizzas] = useState<Pizza[]>([]);
+  const [produtos, setProdutos] = useState<Pizza[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Pizza[]>([]); // Lista filtrada para AMBAS as listas
   const [quantities, setQuantities] = useState<{[key: number]: number}>({});
   const [selectedPizzas, setSelectedPizzas] = useState<Pizza[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+  const [categories, setCategories] = useState<string[]>(['Todos']);
 
+  // useEffect para buscar produtos e extrair categorias
   useEffect(() => {
-    const fetchPizzas = async () => {
+    const fetchProdutos = async () => {
       setLoading(true);
+      setProdutos([]);
+      setFilteredItems([]);
+      setCategories(['Todos']);
+      setSelectedCategory('Todos');
       try {
-        // <<< CONFIRME SE ESTA É A URL CORRETA DA SUA API ATUALIZADA >>>
-        const response = await axios.get<any[]>(
-          'https://devweb3.ok.etc.br/api/api_get_pizzas_mobile.php',
+        const response = await axios.get<ApiProdutoItem[]>(
+          'https://devweb3.ok.etc.br/api_mobile/api_get_produtos.php',
         );
-
-        // --- Data Validation and Processing ---
         if (!Array.isArray(response.data)) {
-          console.error('Erro: Resposta da API não é um array:', response.data);
-          throw new Error('Invalid API response format');
+          throw new Error('Formato inválido da resposta da API');
         }
-
-        // <<< AJUSTADO PARA O NOVO FORMATO DA API (id, descricao) >>>
-        const pizzasValidas = response.data
-          // 1. Filter usando 'id' (como a nova API retorna)
+        const produtosValidos: Pizza[] = response.data
           .filter(
             item =>
               item &&
               typeof item === 'object' &&
-              item.id != null && // <-- CORRIGIDO: Usar 'id'
-              item.nome != null,
+              item.produto_id != null &&
+              item.nome != null &&
+              item.preco != null &&
+              item.categoria != null,
           )
-          // 2. Map usando 'id' e 'descricao' (como a nova API retorna)
           .map(
             (item): Pizza => ({
-              id: Number(item.id), // <-- CORRIGIDO: Usar 'id'
-              nome: String(item.nome), // Mantém
-              descricao: String(item.descricao || 'Descrição não disponível'), // <-- CORRIGIDO: Usar 'descricao'
-              preco: parseFloat(item.preco as unknown as string) || 0, // Mantém
-              caminho: String(item.caminho || ''), // Mantém
+              id: Number(item.produto_id),
+              nome: String(item.nome),
+              ingredientes: String(
+                item.ingredientes || 'Ingredientes não disponíveis',
+              ),
+              preco: parseFloat(String(item.preco)) || 0,
+              caminho: String(item.caminho || ''),
+              detalhes: String(item.detalhes || ''),
+              categoria: String(item.categoria || 'Outros'),
+              tamanho: String(item.tamanho || ''),
             }),
           );
-        // <<< FIM DOS AJUSTES >>>
-
-        // Logs para depuração - Verifique no console do Metro Bundler
-        console.log('API Response Data (Raw):', response.data);
-        console.log('Pizzas Válidas Mapeadas:', pizzasValidas);
-
-        // Verificação adicional se o mapeamento falhou
-        if (pizzasValidas.length === 0 && response.data.length > 0) {
-          console.warn(
-            "FILTRO/MAP RESULTADO VAZIO: Verifique os nomes dos campos ('id', 'descricao') no filter/map e compare com os dados brutos da API acima.",
+        setProdutos(produtosValidos);
+        if (produtosValidos.length > 0) {
+          const uniqueCategories = [
+            'Todos',
+            ...new Set(produtosValidos.map(p => p.categoria)),
+          ].sort((a, b) =>
+            a === 'Todos' ? -1 : b === 'Todos' ? 1 : a.localeCompare(b),
           );
+          setCategories(uniqueCategories);
+        } else {
+          setCategories(['Todos']);
         }
-
-        setPizzas(pizzasValidas);
-        // --- End Data Validation ---
       } catch (error) {
-        console.error(
-          'Erro ao buscar ou processar os dados das pizzas:',
-          error,
-        );
-        if (axios.isAxiosError(error)) {
-          console.error('Axios error details:', error.toJSON());
-          if (error.response) {
-            console.error('API Response Data (on error):', error.response.data);
-            console.error('API Response Status:', error.response.status);
-          } else if (error.request) {
-            console.error('Axios request error:', error.request);
-          } else {
-            console.error('Axios general error:', error.message);
-          }
-        }
-        setPizzas([]);
+        console.error('Erro ao buscar produtos:', error);
+        setProdutos([]);
+        setCategories(['Todos']);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchPizzas();
+    fetchProdutos();
   }, []);
 
-  // --- Funções handlers (sem alterações, mantidas como antes) ---
-  const handleAddPizza = (pizza: Pizza) => {
-    if (!pizza || pizza.id == null) {
-      console.warn('handleAddPizza called with invalid pizza data:', pizza);
+  // useEffect para aplicar filtros combinados
+  useEffect(() => {
+    let itemsToFilter = [...produtos];
+    if (selectedCategory !== 'Todos') {
+      itemsToFilter = itemsToFilter.filter(
+        item => item.categoria === selectedCategory,
+      );
+    }
+    if (searchQuery) {
+      itemsToFilter = itemsToFilter.filter(item =>
+        item.nome.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
+    }
+    setFilteredItems(itemsToFilter); // Atualiza a lista que será usada por ambas as FlatLists
+  }, [produtos, selectedCategory, searchQuery]);
+
+  // --- Funções de Carrinho e Lógica de Pizza ---
+  // (Colar aqui as funções: sendItemToCartAPI, handlePizzaSelectionLogic, handleAddItemDirectly,
+  // handleAddItemClick, handleMenuPizzaClick, handleRemovePizza,
+  // handleConfirmAddition, handleCancelAddition como estavam antes)
+  // --- Função Auxiliar para Enviar ao Carrinho ---
+  const sendItemToCartAPI = (itemData: {
+    cliente_id: number | string;
+    pizza_id: number;
+    preco: number;
+    nome_pizza: string;
+    tipo_pizza: string;
+  }) => {
+    /* ...código... */
+    console.log('Enviando para API /api_registrar_carrinho.php:', itemData);
+    return axios
+      .post(
+        'https://devweb3.ok.etc.br/api/api_registrar_carrinho.php',
+        itemData,
+      )
+      .then(response => {
+        console.log(
+          `Item ${itemData.nome_pizza} (${itemData.tipo_pizza}) registrado. Resposta:`,
+          response.data,
+        );
+        return response;
+      })
+      .catch(error => {
+        console.error(
+          `Erro ao registrar ${itemData.nome_pizza} (ID: ${itemData.pizza_id}) no carrinho:`,
+          error,
+        );
+        if (axios.isAxiosError(error) && error.response) {
+          console.error(
+            'Resposta de Erro da API (registrar carrinho):',
+            error.response.data,
+          );
+          Alert.alert(
+            'Erro',
+            `Não foi possível adicionar ${itemData.nome_pizza}. ${
+              error.response.data?.message || 'Tente novamente.'
+            }`,
+          );
+        }
+        throw error;
+      });
+  };
+  // --- Lógica de Seleção de PIZZA (meia/inteira) ---
+  const handlePizzaSelectionLogic = (pizza: Pizza) => {
+    if (!pizza || pizza.id == null) return;
+    if (!user || !user.id) {
+      setModalMessage('Você precisa estar logado para adicionar itens.');
+      setSelectedPizzas([]);
+      setQuantities({});
+      setModalVisible(true);
       return;
     }
     const currentQuantity = quantities[pizza.id] || 0;
-
     if (currentQuantity === 1) {
       setModalMessage(
-        `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${
+        `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${(
           (pizza.preco || 0) * 2
-        }`,
+        ).toFixed(2)}`,
       );
       setSelectedPizzas([pizza]);
       setModalVisible(true);
     } else if (selectedPizzas.length === 1) {
-      if (!selectedPizzas[0] || selectedPizzas[0].id == null) {
-        console.warn('handleAddPizza: Invalid pizza previously selected.');
-        setSelectedPizzas([pizza]);
-        setQuantities({[pizza.id]: 1});
-        return;
-      }
       const previousPizza = selectedPizzas[0];
+      const precoMeiaMeia = (previousPizza.preco || 0) + (pizza.preco || 0);
       setModalMessage(
         `Deseja adicionar meia ${previousPizza.nome} e meia ${
           pizza.nome
-        }? Preço: R$ ${(previousPizza.preco || 0) + (pizza.preco || 0)}`,
+        }? Preço: R$ ${precoMeiaMeia.toFixed(2)}`,
       );
       setSelectedPizzas([...selectedPizzas, pizza]);
       setModalVisible(true);
@@ -147,13 +211,51 @@ export default function Feed() {
       setSelectedPizzas([pizza]);
     }
   };
-
-  const handleMenuPizzaClick = (pizza: Pizza) => {
-    if (!pizza || pizza.id == null) {
+  // --- Adicionar Itens NÃO-PIZZA Diretamente (com Alert de sucesso) ---
+  const handleAddItemDirectly = async (item: Pizza) => {
+    if (!item || item.id == null) return;
+    if (!user || !user.id) {
+      setModalMessage('Você precisa estar logado para adicionar itens.');
+      setSelectedPizzas([]);
+      setQuantities({});
+      setModalVisible(true);
+      return;
+    }
+    const itemData = {
+      cliente_id: user.id,
+      pizza_id: item.id,
+      preco: item.preco || 0,
+      nome_pizza: item.nome,
+      tipo_pizza:
+        item.categoria?.toLowerCase() === 'pizza' ? 'inteira' : 'item',
+    };
+    try {
+      // setLoading(true); // Pode causar piscar da tela, talvez remover
+      await sendItemToCartAPI(itemData);
+      Alert.alert('Sucesso', `${item.nome} adicionado ao carrinho!`);
+    } catch (error) {
+      console.error('Falha ao adicionar item diretamente:', error);
+    } finally {
+      // setLoading(false);
+    }
+  };
+  // --- Função Dispatcher ---
+  const handleAddItemClick = (item: Pizza) => {
+    if (!item || item.id == null) return;
+    if (item.categoria?.toLowerCase() === 'pizza') {
+      handlePizzaSelectionLogic(item);
+    } else {
+      handleAddItemDirectly(item);
+    }
+  };
+  // --- handleMenuPizzaClick ---
+  const handleMenuPizzaClick = (item: Pizza) => {
+    if (!item || item.id == null) return;
+    if (item.categoria?.toLowerCase() !== 'pizza') {
       console.warn(
-        'handleMenuPizzaClick called with invalid pizza data:',
-        pizza,
+        `Item "${item.nome}" no menu não é pizza, adicionando diretamente.`,
       );
+      handleAddItemDirectly(item);
       return;
     }
     if (!user || !user.id) {
@@ -163,26 +265,23 @@ export default function Feed() {
       return;
     }
     setModalMessage(
-      `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${
-        (pizza.preco || 0) * 2
-      }`,
+      `Deseja adicionar uma pizza inteira ${item.nome}? Preço: R$ ${(
+        (item.preco || 0) * 2
+      ).toFixed(2)}`,
     );
-    setSelectedPizzas([pizza]);
+    setSelectedPizzas([item]);
     setQuantities({});
     setModalVisible(true);
   };
-
+  // --- handleRemovePizza (Só afeta seleção de pizzas) ---
   const handleRemovePizza = (pizza: Pizza) => {
-    if (!pizza || pizza.id == null) {
-      console.warn('handleRemovePizza called with invalid pizza data:', pizza);
+    if (pizza.categoria?.toLowerCase() !== 'pizza') {
       return;
     }
+    if (!pizza || pizza.id == null) return;
     const currentQuantity = quantities[pizza.id] || 0;
     if (currentQuantity > 0) {
-      setQuantities(prev => ({
-        ...prev,
-        [pizza.id]: currentQuantity - 1,
-      }));
+      setQuantities(prev => ({...prev, [pizza.id]: currentQuantity - 1}));
       if (
         currentQuantity === 1 &&
         selectedPizzas.length === 1 &&
@@ -192,7 +291,7 @@ export default function Feed() {
       }
     }
   };
-
+  // --- handleConfirmAddition (Confirmação de PIZZAS do modal) ---
   const handleConfirmAddition = () => {
     if (!user || !user.id) {
       setModalMessage(
@@ -200,107 +299,77 @@ export default function Feed() {
       );
       return;
     }
-    if (
-      modalMessage === 'Você precisa estar logado para adicionar itens.' ||
-      modalMessage ===
-        'Você precisa estar logado para adicionar itens ao carrinho.'
-    ) {
-      setModalVisible(false);
-      setSelectedPizzas([]);
-      setQuantities({});
+    if (modalMessage.includes('logado')) {
+      handleCancelAddition();
       return;
     }
-
-    const validSelectedPizzas = selectedPizzas.filter(p => p && p.id != null);
+    const validSelectedPizzas = selectedPizzas.filter(
+      p => p && p.id != null && p.categoria?.toLowerCase() === 'pizza',
+    );
     if (validSelectedPizzas.length === 0) {
-      console.warn('handleConfirmAddition: No valid pizzas selected.');
-      setModalVisible(false);
-      setQuantities({});
-      setSelectedPizzas([]);
+      handleCancelAddition();
       return;
     }
-
-    validSelectedPizzas.forEach(pizza => {
+    const apiCalls = validSelectedPizzas.map(pizza => {
       const tipoPizza = validSelectedPizzas.length === 1 ? 'inteira' : 'meia';
       const precoFinal =
         tipoPizza === 'inteira' ? (pizza.preco || 0) * 2 : pizza.preco || 0;
-
-      axios
-        .post('https://devweb3.ok.etc.br/api/api_registrar_carrinho.php', {
-          cliente_id: user.id,
-          pizza_id: pizza.id,
-          preco: precoFinal,
-          nome_pizza: pizza.nome,
-          tipo_pizza: tipoPizza,
-        })
-        .then(response => {
-          console.log('Pizza registrada no carrinho:', response.data);
-        })
-        .catch(error => {
-          console.error(
-            `Erro ao registrar pizza ${pizza.nome} (${pizza.id}) no carrinho:`,
-            error,
-          );
-          if (axios.isAxiosError(error) && error.response) {
-            console.error(
-              'API Error Response (registrar carrinho):',
-              error.response.data,
-            );
-          }
-        });
+      const itemData = {
+        cliente_id: user.id!,
+        pizza_id: pizza.id,
+        preco: parseFloat(precoFinal.toFixed(2)),
+        nome_pizza: pizza.nome,
+        tipo_pizza: tipoPizza,
+      };
+      return sendItemToCartAPI(itemData);
     });
-
+    Promise.all(apiCalls)
+      .then(results => console.log('Pizzas selecionadas processadas.'))
+      .catch(error => console.error('Erro ao processar pizzas:', error))
+      .finally(() => handleCancelAddition());
+  };
+  // --- handleCancelAddition (Limpa estado de seleção de pizza) ---
+  const handleCancelAddition = () => {
     setModalVisible(false);
     setQuantities({});
     setSelectedPizzas([]);
-  };
-
-  const handleCancelAddition = () => {
-    setModalVisible(false);
-    if (
-      modalMessage !== 'Você precisa estar logado para adicionar itens.' &&
-      modalMessage !==
-        'Você precisa estar logado para adicionar itens ao carrinho.'
-    ) {
-      setQuantities({});
-      setSelectedPizzas([]);
-    }
     setModalMessage('');
   };
 
-  // Filter pizzas based on search query
-  const filteredPizzas = searchQuery
-    ? pizzas.filter(pizza =>
-        pizza.nome.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : pizzas;
-
-  // Render item for the main list
-  const renderItem = ({item}: {item: Pizza}) => (
-    <View style={styles.itemContainer}>
-      <View style={styles.row}>
-        <TouchableOpacity onPress={() => handleRemovePizza(item)}>
-          <Icon name="minus-circle" size={25} color="#ff6347" />
-        </TouchableOpacity>
-        <Text style={styles.quantity}>{quantities[item?.id] || 0}</Text>
-        <TouchableOpacity onPress={() => handleAddPizza(item)}>
-          <Icon name="plus-circle" size={25} color="#32cd32" />
-        </TouchableOpacity>
-        <Text style={styles.itemTitle}>
-          {item?.nome || 'Nome Indisponível'}
+  // --- Render Item ---
+  const renderItem = ({item}: {item: Pizza}) => {
+    const isPizza = item.categoria?.toLowerCase() === 'pizza';
+    return (
+      <View style={styles.itemContainer}>
+        <View style={styles.row}>
+          {isPizza ? (
+            <TouchableOpacity onPress={() => handleRemovePizza(item)}>
+              <Icon name="minus-circle" size={25} color="#ff6347" />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.buttonPlaceholder} />
+          )}
+          <Text style={styles.quantity}>
+            {isPizza ? quantities[item?.id] || 0 : ''}
+          </Text>
+          <TouchableOpacity onPress={() => handleAddItemClick(item)}>
+            <Icon name="plus-circle" size={25} color="#32cd32" />
+          </TouchableOpacity>
+          <Text style={styles.itemTitle}>
+            {item?.nome || 'Nome Indisponível'}
+          </Text>
+        </View>
+        <Text style={styles.itemDescription}>
+          {item?.ingredientes || item?.detalhes || 'Detalhes indisponíveis'}
         </Text>
+        <Text style={styles.itemPrice}>{`R$ ${(item?.preco ?? 0).toFixed(
+          2,
+        )}`}</Text>
       </View>
-      {/* Exibe a descrição vinda da API */}
-      <Text style={styles.itemDescription}>
-        {item?.descricao || 'Descrição Indisponível'}
-      </Text>
-      <Text style={styles.itemPrice}>{`R$ ${(item?.preco ?? 0).toFixed(
-        2,
-      )}`}</Text>
-    </View>
-  );
+    );
+  };
 
-  // Render item for menu - Com renderização condicional da imagem
+  // --- Render Menu Item ---
   const renderMenuItem = ({item}: {item: Pizza}) => (
     <TouchableOpacity
       style={styles.menuItemOuterContainer}
@@ -312,41 +381,72 @@ export default function Feed() {
             source={{uri: item.caminho}}
             style={styles.menuItemImage}
             onError={e =>
-              console.log(
-                `Erro ao carregar imagem (menu) ${item?.caminho}:`,
-                e.nativeEvent.error,
-              )
+              console.log(`Erro img ${item?.caminho}:`, e.nativeEvent.error)
             }
           />
         ) : (
-          <View style={[styles.menuItemImage, {backgroundColor: '#ddd'}]} />
+          <View style={[styles.menuItemImage, styles.placeholderImage]}>
+            <Icon
+              name={
+                item.categoria?.toLowerCase() === 'pizza'
+                  ? 'pizza-slice'
+                  : 'shopping-basket'
+              }
+              size={20}
+              color="#ccc"
+            />
+          </View>
         )}
       </View>
-      <Text style={styles.menuItemText}>{item?.nome || '???'}</Text>
+      <Text style={styles.menuItemText} numberOfLines={2}>
+        {item?.nome || '???'}
+      </Text>
     </TouchableOpacity>
   );
 
-  // --- JSX Structure ---
+  // --- Estrutura JSX ---
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Busque por nome da pizza..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor="#999"
-        />
-        <View style={styles.searchIconContainer}>
-          <Icon name="search" size={18} color="#fff" />
+      {/* Container para Filtros e Busca */}
+      <View style={styles.filtersContainer}>
+        {/* Picker */}
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedCategory}
+            style={styles.picker}
+            onValueChange={itemValue => setSelectedCategory(itemValue)}
+            mode="dropdown"
+            prompt="Selecione Categoria"
+            dropdownIconColor="#FFA500">
+            {categories.map((category, index) => (
+              <Picker.Item
+                key={index}
+                label={category}
+                value={category}
+                style={styles.pickerItem}
+              />
+            ))}
+          </Picker>
+        </View>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por nome..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#888"
+          />
+          <View style={styles.searchIconContainer}>
+            <Icon name="search" size={18} color="#fff" />
+          </View>
         </View>
       </View>
 
-      {/* Horizontal Menu */}
+      {/* Menu Horizontal (AGORA USANDO DADOS FILTRADOS) */}
       <View style={styles.menuContainer}>
-        {/* Loader inicial */}
-        {loading && pizzas.length === 0 ? ( // Mostra loader se carregando E sem pizzas
+        {/* Mostra loader APENAS se estiver carregando E a lista original ainda estiver vazia */}
+        {loading && produtos.length === 0 ? (
           <ActivityIndicator
             style={{paddingVertical: 20}}
             size="small"
@@ -354,17 +454,22 @@ export default function Feed() {
           />
         ) : (
           <FlatList
-            data={pizzas} // Usa o estado 'pizzas' mapeado corretamente
-            keyExtractor={(item, index) =>
-              item?.id != null ? `menu-${item.id}` : `menu-fallback-${index}`
-            }
-            horizontal={true}
+            // ***** ALTERAÇÃO PRINCIPAL AQUI *****
+            data={filteredItems} // Usa a mesma lista filtrada da vertical
+            keyExtractor={(item, index) => `menu-${item?.id ?? index}`}
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.menuList}
-            renderItem={renderMenuItem}
+            renderItem={renderMenuItem} // Reutiliza a função de renderização do item do menu
             ListEmptyComponent={
-              !loading ? ( // Só mostra se não estiver carregando
-                <Text style={styles.emptyMenu}>Nenhuma pizza no menu.</Text>
+              // Mostra mensagem apenas se não estiver carregando E a lista filtrada estiver vazia
+              !loading && filteredItems.length === 0 ? (
+                <Text style={styles.emptyMenu}>
+                  {/* Mensagem varia se a lista original tem itens ou não */}
+                  {produtos.length > 0
+                    ? 'Nenhum item para os filtros.'
+                    : 'Nenhum item no menu.'}
+                </Text>
               ) : null
             }
           />
@@ -374,17 +479,14 @@ export default function Feed() {
       {/* Banner */}
       <View style={styles.banner}>
         <Image
-          source={require('../../assets/banner.png')} // Atenção a este caminho!
+          source={require('../../assets/banner.png')}
           style={styles.bannerImage}
-          onError={e =>
-            console.log('Erro ao carregar banner:', e.nativeEvent.error)
-          }
+          onError={e => console.log('Erro banner:', e.nativeEvent.error)}
         />
       </View>
 
-      {/* Main Vertical List */}
-      {/* Loader ou lista/vazio */}
-      {loading && pizzas.length === 0 ? ( // Mostra loader se carregando E sem pizzas
+      {/* Lista Principal Vertical */}
+      {loading && produtos.length === 0 ? (
         <ActivityIndicator
           style={{marginTop: 50}}
           size="large"
@@ -392,22 +494,18 @@ export default function Feed() {
         />
       ) : (
         <FlatList
-          data={filteredPizzas} // Lista filtrada pela busca
-          keyExtractor={(item, index) =>
-            item?.id != null ? `main-${item.id}` : `main-fallback-${index}`
-          }
-          renderItem={renderItem}
+          data={filteredItems} // Já usava a lista filtrada
+          keyExtractor={(item, index) => `main-${item?.id ?? index}`}
+          renderItem={renderItem} // Função de renderização da lista principal
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.empty}>
-              {
-                searchQuery
-                  ? 'Nenhuma pizza encontrada para sua busca.'
-                  : !loading && pizzas.length === 0 // Condição chave aqui!
-                  ? 'Nenhuma pizza disponível no momento.' // Mostra APENAS se não está carregando E pizzas está vazio
-                  : 'Nenhuma pizza disponível.' // Caso padrão (não deve ocorrer se a lógica acima estiver ok)
-              }
-            </Text>
+            <View style={styles.emptyListContainer}>
+              <Text style={styles.empty}>
+                {!loading && produtos.length === 0
+                  ? 'Nenhum item disponível no momento.'
+                  : 'Nenhum item encontrado para os filtros aplicados.'}
+              </Text>
+            </View>
           }
         />
       )}
@@ -415,17 +513,16 @@ export default function Feed() {
       {/* Modal */}
       <Modal
         animationType="fade"
-        transparent={true}
+        transparent
         visible={modalVisible}
         onRequestClose={handleCancelAddition}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalMessage}>{modalMessage}</Text>
             <View style={styles.modalButtons}>
-              {modalMessage !==
-                'Você precisa estar logado para adicionar itens.' &&
-              modalMessage !==
-                'Você precisa estar logado para adicionar itens ao carrinho.' ? (
+              {modalMessage &&
+              !modalMessage.includes('logado') &&
+              selectedPizzas.length > 0 ? (
                 <>
                   <Button
                     title="Adicionar"
@@ -454,37 +551,49 @@ export default function Feed() {
   );
 }
 
-// --- Estilos --- (Mantidos como antes)
+// --- Estilos ---
 const IMAGE_SIZE = 55;
 const BORDER_WIDTH = 2;
 const IMAGE_WITH_BORDER_SIZE = IMAGE_SIZE + BORDER_WIDTH * 2;
+const BUTTON_ICON_SIZE = 25;
 
+// (Colar aqui os estilos completos da sua versão anterior)
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
+  container: {flex: 1, backgroundColor: '#f8f8f8'},
+  filtersContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
   },
+  pickerContainer: {
+    flex: 1,
+    height: 45,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    justifyContent: 'center',
+    marginRight: 10,
+    overflow: 'hidden',
+  },
+  picker: {height: '100%', width: '100%', color: '#333'},
+  pickerItem: {fontSize: 14, backgroundColor: '#fff'},
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    width: '90%',
-    height: 40,
+    height: 45,
     borderColor: '#ccc',
     borderWidth: 1,
-    borderRadius: 50,
-    paddingLeft: 15,
-    paddingRight: 5,
-    alignSelf: 'center',
-    marginTop: 20,
-    marginBottom: 10,
+    borderRadius: 8,
     backgroundColor: '#fff',
+    paddingLeft: 10,
+    paddingRight: 5,
   },
-  searchInput: {
-    flex: 1,
-    height: '100%',
-    fontSize: 15,
-    color: '#333',
-  },
+  searchInput: {flex: 1, height: '100%', fontSize: 15, color: '#333'},
   searchIconContainer: {
     backgroundColor: '#FFA500',
     borderRadius: 15,
@@ -503,12 +612,12 @@ const styles = StyleSheet.create({
   menuList: {
     paddingHorizontal: 10,
     alignItems: 'flex-start',
-  },
+    minHeight: IMAGE_WITH_BORDER_SIZE + 30,
+  }, // Garante altura mínima para mensagem de vazio
   menuItemOuterContainer: {
     alignItems: 'center',
     marginHorizontal: 8,
-    minWidth: IMAGE_WITH_BORDER_SIZE + 10,
-    maxWidth: IMAGE_WITH_BORDER_SIZE + 30,
+    width: IMAGE_WITH_BORDER_SIZE + 10,
   },
   menuItemImageBackground: {
     width: IMAGE_WITH_BORDER_SIZE,
@@ -531,25 +640,32 @@ const styles = StyleSheet.create({
     borderWidth: BORDER_WIDTH,
     borderColor: '#fff',
     backgroundColor: '#eee',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  placeholderImage: {backgroundColor: '#f0f0f0'},
   menuItemText: {
     color: '#555',
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 2,
-    flexWrap: 'wrap',
+    paddingHorizontal: 2,
   },
   emptyMenu: {
+    // Estilo para mensagem de menu vazio
     paddingHorizontal: 20,
     color: '#999',
     textAlign: 'center',
-    width: '100%',
+    // Tenta centralizar verticalmente no espaço do menu
+    lineHeight: IMAGE_WITH_BORDER_SIZE + 20, // Ajuste conforme altura do menu
+    width: '100%', // Ocupa a largura
+    alignSelf: 'center',
   },
   banner: {
     width: '100%',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 5,
     marginBottom: 10,
   },
   bannerImage: {
@@ -559,11 +675,7 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     borderRadius: 8,
   },
-  list: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
+  list: {width: '100%', paddingHorizontal: 16, paddingBottom: 20},
   itemContainer: {
     padding: 16,
     borderBottomWidth: 1,
@@ -572,11 +684,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 8,
     elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 1.5,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+  row: {flexDirection: 'row', alignItems: 'center', marginBottom: 8},
+  buttonPlaceholder: {width: BUTTON_ICON_SIZE},
+  quantity: {
+    fontSize: 18,
+    marginHorizontal: 12,
+    fontWeight: 'bold',
+    color: '#333',
+    minWidth: 25,
+    textAlign: 'center',
+    lineHeight: BUTTON_ICON_SIZE,
   },
   itemTitle: {
     fontSize: 17,
@@ -588,7 +710,8 @@ const styles = StyleSheet.create({
   itemDescription: {
     fontSize: 14,
     color: '#666',
-    marginLeft: 45 + 12,
+    marginLeft: 16,
+    paddingLeft: 0,
     marginBottom: 8,
   },
   itemPrice: {
@@ -599,21 +722,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
     marginTop: 4,
   },
-  quantity: {
-    fontSize: 18,
-    marginHorizontal: 12,
-    fontWeight: 'bold',
-    color: '#333',
-    minWidth: 25,
-    textAlign: 'center',
-  },
-  empty: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#999',
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 50,
     paddingHorizontal: 20,
   },
+  empty: {textAlign: 'center', fontSize: 16, color: '#999'},
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -639,9 +755,5 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 24,
   },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-  },
+  modalButtons: {flexDirection: 'row', justifyContent: 'center', width: '100%'},
 });
