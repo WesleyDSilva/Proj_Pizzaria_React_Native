@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Modal,
   Image,
-  Button,
   TextInput,
   Alert,
 } from 'react-native';
@@ -21,39 +20,73 @@ import {Picker} from '@react-native-picker/picker';
 interface Pizza {
   id: number;
   nome: string;
-  preco: number;
   ingredientes: string;
   detalhes?: string;
   caminho: string;
   categoria: string;
-  tamanho?: string;
+  preco: number;
+  precoPequena?: number | null;
+  precoMedia?: number | null;
+  precoGrande?: number | null;
+  precoGrandeInteira?: number | null;
+  precoMediaInteira?: number | null;
+  tamanhoApi?: string; // Pode ser usado para tamanho de itens não-pizza
 }
 
 interface ApiProdutoItem {
   produto_id: string | number;
   nome: string;
-  preco: string | number;
-  tamanho: string | number;
   ingredientes: string;
   detalhes?: string;
   caminho: string;
   categoria: string;
+  pequena?: string | null;
+  media?: string | null;
+  grande?: string | null;
+  grande_inteira?: string | null;
+  media_inteira?: string | null;
+  tamanho?: string; // Recebido da API de produtos
+}
+
+// Tipos para o modal de opções de pizza
+type PizzaTamanho = 'pequena' | 'media' | 'grande';
+type PizzaTipo = 'inteira' | 'meia';
+
+// Interface para os dados enviados para a API de registrar item
+interface ItemPedidoPayload {
+  cliente_id: string | number;
+  pizza_id: number; // Mapeia para produto_id na API
+  preco: number; // Mapeia para total na API
+  tamanho_selecionado: string; // Mapeia para tamanho na API
+  tipo_pizza: string; // Mapeia para tipo_tamanho na API ('inteira', 'meia')
+  // nome_pizza?: string; // Opcional, pois a API atual não usa para 'obs'
 }
 
 export default function Feed() {
   const {user} = useContext(AuthContext);
   const [produtos, setProdutos] = useState<Pizza[]>([]);
-  const [filteredItems, setFilteredItems] = useState<Pizza[]>([]); // Lista filtrada para AMBAS as listas
-  const [quantities, setQuantities] = useState<{[key: number]: number}>({});
-  const [selectedPizzas, setSelectedPizzas] = useState<Pizza[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMessage, setModalMessage] = useState<string>('');
+  const [filteredItems, setFilteredItems] = useState<Pizza[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [categories, setCategories] = useState<string[]>(['Todos']);
 
-  // useEffect para buscar produtos e extrair categorias
+  const [pizzaOptionsModalVisible, setPizzaOptionsModalVisible] =
+    useState(false);
+  const [currentPizzaForOptions, setCurrentPizzaForOptions] =
+    useState<Pizza | null>(null);
+  const [selectedTamanhoModal, setSelectedTamanhoModal] =
+    useState<PizzaTamanho>('pequena');
+  const [selectedTipoModal, setSelectedTipoModal] =
+    useState<PizzaTipo>('inteira');
+  const [calculatedPriceModal, setCalculatedPriceModal] = useState<number>(0);
+
+  const parseApiPrice = (price: string | null | undefined): number | null => {
+    if (price === null || price === undefined || price === '') return null;
+    const num = parseFloat(price);
+    return isNaN(num) ? null : num;
+  };
+
   useEffect(() => {
     const fetchProdutos = async () => {
       setLoading(true);
@@ -66,7 +99,7 @@ export default function Feed() {
           'https://devweb3.ok.etc.br/api_mobile/api_get_produtos.php',
         );
         if (!Array.isArray(response.data)) {
-          throw new Error('Formato inválido da resposta da API');
+          throw new Error('Formato inválido');
         }
         const produtosValidos: Pizza[] = response.data
           .filter(
@@ -75,23 +108,32 @@ export default function Feed() {
               typeof item === 'object' &&
               item.produto_id != null &&
               item.nome != null &&
-              item.preco != null &&
               item.categoria != null,
           )
-          .map(
-            (item): Pizza => ({
+          .map((item): Pizza => {
+            const pPequena = parseApiPrice(item.pequena);
+            const pMedia = parseApiPrice(item.media);
+            const pGrande = parseApiPrice(item.grande);
+            const pGrandeInteira = parseApiPrice(item.grande_inteira);
+            const pMediaInteira = parseApiPrice(item.media_inteira);
+            const precoBase = pPequena ?? pMedia ?? pGrande ?? 0;
+
+            return {
               id: Number(item.produto_id),
               nome: String(item.nome),
-              ingredientes: String(
-                item.ingredientes || 'Ingredientes não disponíveis',
-              ),
-              preco: parseFloat(String(item.preco)) || 0,
-              caminho: String(item.caminho || ''),
+              ingredientes: String(item.ingredientes || 'Ingr. não disp.'),
               detalhes: String(item.detalhes || ''),
+              caminho: String(item.caminho || ''),
               categoria: String(item.categoria || 'Outros'),
-              tamanho: String(item.tamanho || ''),
-            }),
-          );
+              preco: precoBase,
+              precoPequena: pPequena,
+              precoMedia: pMedia,
+              precoGrande: pGrande,
+              precoGrandeInteira: pGrandeInteira,
+              precoMediaInteira: pMediaInteira,
+              tamanhoApi: String(item.tamanho || ''), // Recebido da API de produtos
+            };
+          });
         setProdutos(produtosValidos);
         if (produtosValidos.length > 0) {
           const uniqueCategories = [
@@ -105,7 +147,7 @@ export default function Feed() {
           setCategories(['Todos']);
         }
       } catch (error) {
-        console.error('Erro ao buscar produtos:', error);
+        console.error('Erro produtos:', error);
         setProdutos([]);
         setCategories(['Todos']);
       } finally {
@@ -115,265 +157,262 @@ export default function Feed() {
     fetchProdutos();
   }, []);
 
-  // useEffect para aplicar filtros combinados
   useEffect(() => {
     let itemsToFilter = [...produtos];
-    if (selectedCategory !== 'Todos') {
+    if (selectedCategory !== 'Todos')
       itemsToFilter = itemsToFilter.filter(
         item => item.categoria === selectedCategory,
       );
-    }
-    if (searchQuery) {
+    if (searchQuery)
       itemsToFilter = itemsToFilter.filter(item =>
         item.nome.toLowerCase().includes(searchQuery.toLowerCase()),
       );
-    }
-    setFilteredItems(itemsToFilter); // Atualiza a lista que será usada por ambas as FlatLists
+    setFilteredItems(itemsToFilter);
   }, [produtos, selectedCategory, searchQuery]);
 
-  // --- Funções de Carrinho e Lógica de Pizza ---
-  // (Colar aqui as funções: sendItemToCartAPI, handlePizzaSelectionLogic, handleAddItemDirectly,
-  // handleAddItemClick, handleMenuPizzaClick, handleRemovePizza,
-  // handleConfirmAddition, handleCancelAddition como estavam antes)
-  // --- Função Auxiliar para Enviar ao Carrinho ---
-  const sendItemToCartAPI = (itemData: {
-    cliente_id: number | string;
-    pizza_id: number;
-    preco: number;
-    nome_pizza: string;
-    tipo_pizza: string;
-  }) => {
-    /* ...código... */
-    console.log('Enviando para API /api_registrar_carrinho.php:', itemData);
+  const sendItemToCartAPI = (itemData: ItemPedidoPayload) => {
+    console.log('Enviando para api_registrar_item_pedido.php:', itemData);
     return axios
       .post(
-        'https://devweb3.ok.etc.br/api/api_registrar_carrinho.php',
+        'https://devweb3.ok.etc.br/api_mobile/api_registrar_item_pedido.php',
         itemData,
       )
       .then(response => {
         console.log(
-          `Item ${itemData.nome_pizza} (${itemData.tipo_pizza}) registrado. Resposta:`,
+          `Item (ID Prod: ${itemData.pizza_id}) registrado. Resposta:`,
           response.data,
         );
-        return response;
+        return response.data;
       })
       .catch(error => {
         console.error(
-          `Erro ao registrar ${itemData.nome_pizza} (ID: ${itemData.pizza_id}) no carrinho:`,
+          `Erro ao registrar item (ID Prod: ${itemData.pizza_id}):`,
           error,
         );
         if (axios.isAxiosError(error) && error.response) {
           console.error(
-            'Resposta de Erro da API (registrar carrinho):',
+            'Dados da resposta do erro da API:',
             error.response.data,
           );
           Alert.alert(
-            'Erro',
-            `Não foi possível adicionar ${itemData.nome_pizza}. ${
+            'Erro ao Adicionar',
+            `Falha ao adicionar. ${
               error.response.data?.message || 'Tente novamente.'
             }`,
           );
+        } else {
+          Alert.alert('Erro ao Adicionar', 'Ocorreu um erro desconhecido.');
         }
         throw error;
       });
   };
-  // --- Lógica de Seleção de PIZZA (meia/inteira) ---
-  const handlePizzaSelectionLogic = (pizza: Pizza) => {
-    if (!pizza || pizza.id == null) return;
+
+  const handleAddNonPizzaDirectly = async (item: Pizza) => {
     if (!user || !user.id) {
-      setModalMessage('Você precisa estar logado para adicionar itens.');
-      setSelectedPizzas([]);
-      setQuantities({});
-      setModalVisible(true);
+      Alert.alert(
+        'Login Necessário',
+        'Você precisa estar logado para adicionar itens.',
+      );
       return;
     }
-    const currentQuantity = quantities[pizza.id] || 0;
-    if (currentQuantity === 1) {
-      setModalMessage(
-        `Deseja adicionar uma pizza inteira ${pizza.nome}? Preço: R$ ${(
-          (pizza.preco || 0) * 2
-        ).toFixed(2)}`,
+
+    const precoFinal =
+      typeof item.precoPequena === 'number'
+        ? item.precoPequena
+        : typeof item.preco === 'number'
+        ? item.preco
+        : null;
+
+    if (precoFinal === null) {
+      Alert.alert(
+        'Atenção',
+        `O item "${item.nome}" não possui um preço definido.`,
       );
-      setSelectedPizzas([pizza]);
-      setModalVisible(true);
-    } else if (selectedPizzas.length === 1) {
-      const previousPizza = selectedPizzas[0];
-      const precoMeiaMeia = (previousPizza.preco || 0) + (pizza.preco || 0);
-      setModalMessage(
-        `Deseja adicionar meia ${previousPizza.nome} e meia ${
-          pizza.nome
-        }? Preço: R$ ${precoMeiaMeia.toFixed(2)}`,
-      );
-      setSelectedPizzas([...selectedPizzas, pizza]);
-      setModalVisible(true);
-    } else {
-      setQuantities(prev => ({...prev, [pizza.id]: 1}));
-      setSelectedPizzas([pizza]);
-    }
-  };
-  // --- Adicionar Itens NÃO-PIZZA Diretamente (com Alert de sucesso) ---
-  const handleAddItemDirectly = async (item: Pizza) => {
-    if (!item || item.id == null) return;
-    if (!user || !user.id) {
-      setModalMessage('Você precisa estar logado para adicionar itens.');
-      setSelectedPizzas([]);
-      setQuantities({});
-      setModalVisible(true);
       return;
     }
-    const itemData = {
-      cliente_id: user.id,
+
+    // Definir um tamanho padrão para itens não-pizza.
+    // A API espera 'pequena', 'media', ou 'grande' (ou o que estiver no ENUM do DB).
+    // 'item.tamanhoApi' pode vir da API de produtos se for um tamanho válido.
+    // Caso contrário, um default como 'pequena' ou 'unico' (se 'unico' for um ENUM válido).
+    const tamanhoParaApi =
+      item.tamanhoApi &&
+      ['pequena', 'media', 'grande'].includes(item.tamanhoApi.toLowerCase())
+        ? item.tamanhoApi.toLowerCase()
+        : 'pequena'; // Default para itens não-pizza se tamanhoApi não for válido/específico
+
+    // tipo_pizza para a API (tipo_tamanho no DB) deve ser 'inteira' ou 'meia'.
+    const tipoPizzaParaApi = 'inteira'; // Para itens não-pizza, 'inteira' é o mais lógico
+
+    const itemData: ItemPedidoPayload = {
+      cliente_id: String(user.id), // API pode esperar string ou converter
       pizza_id: item.id,
-      preco: item.preco || 0,
-      nome_pizza: item.nome,
-      tipo_pizza:
-        item.categoria?.toLowerCase() === 'pizza' ? 'inteira' : 'item',
+      preco: precoFinal,
+      tamanho_selecionado: tamanhoParaApi,
+      tipo_pizza: tipoPizzaParaApi,
     };
+
     try {
-      // setLoading(true); // Pode causar piscar da tela, talvez remover
-      await sendItemToCartAPI(itemData);
-      Alert.alert('Sucesso', `${item.nome} adicionado ao carrinho!`);
-    } catch (error) {
-      console.error('Falha ao adicionar item diretamente:', error);
-    } finally {
-      // setLoading(false);
-    }
-  };
-  // --- Função Dispatcher ---
-  const handleAddItemClick = (item: Pizza) => {
-    if (!item || item.id == null) return;
-    if (item.categoria?.toLowerCase() === 'pizza') {
-      handlePizzaSelectionLogic(item);
-    } else {
-      handleAddItemDirectly(item);
-    }
-  };
-  // --- handleMenuPizzaClick ---
-  const handleMenuPizzaClick = (item: Pizza) => {
-    if (!item || item.id == null) return;
-    if (item.categoria?.toLowerCase() !== 'pizza') {
-      console.warn(
-        `Item "${item.nome}" no menu não é pizza, adicionando diretamente.`,
-      );
-      handleAddItemDirectly(item);
-      return;
-    }
-    if (!user || !user.id) {
-      setModalMessage('Você precisa estar logado para adicionar itens.');
-      setSelectedPizzas([]);
-      setModalVisible(true);
-      return;
-    }
-    setModalMessage(
-      `Deseja adicionar uma pizza inteira ${item.nome}? Preço: R$ ${(
-        (item.preco || 0) * 2
-      ).toFixed(2)}`,
-    );
-    setSelectedPizzas([item]);
-    setQuantities({});
-    setModalVisible(true);
-  };
-  // --- handleRemovePizza (Só afeta seleção de pizzas) ---
-  const handleRemovePizza = (pizza: Pizza) => {
-    if (pizza.categoria?.toLowerCase() !== 'pizza') {
-      return;
-    }
-    if (!pizza || pizza.id == null) return;
-    const currentQuantity = quantities[pizza.id] || 0;
-    if (currentQuantity > 0) {
-      setQuantities(prev => ({...prev, [pizza.id]: currentQuantity - 1}));
-      if (
-        currentQuantity === 1 &&
-        selectedPizzas.length === 1 &&
-        selectedPizzas[0]?.id === pizza.id
-      ) {
-        setSelectedPizzas([]);
+      const response = await sendItemToCartAPI(itemData);
+      if (response.success === true) {
+        Alert.alert('Sucesso', `${item.nome} adicionado ao carrinho!`);
+      } else {
+        Alert.alert(
+          'Erro ao Adicionar',
+          response.message ||
+            `Não foi possível adicionar o item "${item.nome}".`,
+        );
       }
+    } catch (error) {
+      // Erro já tratado visualmente em sendItemToCartAPI
+      console.error('Erro ao tentar adicionar item não-pizza:', error);
     }
-  };
-  // --- handleConfirmAddition (Confirmação de PIZZAS do modal) ---
-  const handleConfirmAddition = () => {
-    if (!user || !user.id) {
-      setModalMessage(
-        'Você precisa estar logado para adicionar itens ao carrinho.',
-      );
-      return;
-    }
-    if (modalMessage.includes('logado')) {
-      handleCancelAddition();
-      return;
-    }
-    const validSelectedPizzas = selectedPizzas.filter(
-      p => p && p.id != null && p.categoria?.toLowerCase() === 'pizza',
-    );
-    if (validSelectedPizzas.length === 0) {
-      handleCancelAddition();
-      return;
-    }
-    const apiCalls = validSelectedPizzas.map(pizza => {
-      const tipoPizza = validSelectedPizzas.length === 1 ? 'inteira' : 'meia';
-      const precoFinal =
-        tipoPizza === 'inteira' ? (pizza.preco || 0) * 2 : pizza.preco || 0;
-      const itemData = {
-        cliente_id: user.id!,
-        pizza_id: pizza.id,
-        preco: parseFloat(precoFinal.toFixed(2)),
-        nome_pizza: pizza.nome,
-        tipo_pizza: tipoPizza,
-      };
-      return sendItemToCartAPI(itemData);
-    });
-    Promise.all(apiCalls)
-      .then(results => console.log('Pizzas selecionadas processadas.'))
-      .catch(error => console.error('Erro ao processar pizzas:', error))
-      .finally(() => handleCancelAddition());
-  };
-  // --- handleCancelAddition (Limpa estado de seleção de pizza) ---
-  const handleCancelAddition = () => {
-    setModalVisible(false);
-    setQuantities({});
-    setSelectedPizzas([]);
-    setModalMessage('');
   };
 
-  // --- Render Item ---
+  const handleAddItem = (item: Pizza) => {
+    if (!user || !user.id) {
+      Alert.alert(
+        'Login Necessário',
+        'Você precisa estar logado para adicionar itens.',
+      );
+      return;
+    }
+    if (item.categoria?.toLowerCase() === 'pizza') {
+      setCurrentPizzaForOptions(item);
+      const defaultTamanho =
+        item.precoPequena !== null
+          ? 'pequena'
+          : item.precoMedia !== null
+          ? 'media'
+          : item.precoGrande !== null
+          ? 'grande'
+          : 'pequena'; // Fallback caso nenhum preço esteja definido
+      setSelectedTamanhoModal(defaultTamanho as PizzaTamanho);
+      setSelectedTipoModal('inteira');
+      setPizzaOptionsModalVisible(true);
+    } else {
+      handleAddNonPizzaDirectly(item);
+    }
+  };
+
+  useEffect(() => {
+    if (currentPizzaForOptions) {
+      let price = 0;
+      const pizza = currentPizzaForOptions;
+      if (selectedTipoModal === 'inteira') {
+        if (
+          selectedTamanhoModal === 'pequena' &&
+          typeof pizza.precoPequena === 'number'
+        )
+          price = pizza.precoPequena * 2;
+        else if (
+          selectedTamanhoModal === 'media' &&
+          typeof pizza.precoMediaInteira === 'number'
+        )
+          price = pizza.precoMediaInteira;
+        else if (
+          selectedTamanhoModal === 'media' &&
+          typeof pizza.precoMedia === 'number'
+        )
+          price = pizza.precoMedia * 2;
+        else if (
+          selectedTamanhoModal === 'grande' &&
+          typeof pizza.precoGrandeInteira === 'number'
+        )
+          price = pizza.precoGrandeInteira;
+        else if (
+          selectedTamanhoModal === 'grande' &&
+          typeof pizza.precoGrande === 'number'
+        )
+          price = pizza.precoGrande * 2;
+      } else {
+        // Meia
+        if (
+          selectedTamanhoModal === 'media' &&
+          typeof pizza.precoMedia === 'number'
+        )
+          price = pizza.precoMedia;
+        else if (
+          selectedTamanhoModal === 'grande' &&
+          typeof pizza.precoGrande === 'number'
+        )
+          price = pizza.precoGrande;
+      }
+      setCalculatedPriceModal(price);
+    }
+  }, [currentPizzaForOptions, selectedTamanhoModal, selectedTipoModal]);
+
+  const handleConfirmPizzaOptions = async () => {
+    if (!currentPizzaForOptions || !user || !user.id) return;
+
+    if (calculatedPriceModal <= 0) {
+      Alert.alert('Atenção', 'Preço inválido ou não selecionado corretamente.');
+      return;
+    }
+
+    // const nomePizzaFinal = // A API atual não usa o nome para 'obs'
+    //   selectedTipoModal === 'meia'
+    //     ? `Meia ${currentPizzaForOptions.nome} (${selectedTamanhoModal})`
+    //     : `${currentPizzaForOptions.nome} (${selectedTamanhoModal} ${selectedTipoModal})`;
+
+    const itemData: ItemPedidoPayload = {
+      cliente_id: String(user.id),
+      pizza_id: currentPizzaForOptions.id,
+      preco: calculatedPriceModal,
+      tamanho_selecionado: selectedTamanhoModal,
+      tipo_pizza: selectedTipoModal,
+    };
+
+    try {
+      const response = await sendItemToCartAPI(itemData);
+      if (response.success === true) {
+        Alert.alert(
+          'Sucesso',
+          `${currentPizzaForOptions.nome} (${selectedTamanhoModal} ${selectedTipoModal}) adicionada ao carrinho!`,
+        );
+        setPizzaOptionsModalVisible(false);
+        setCurrentPizzaForOptions(null);
+      } else {
+        Alert.alert(
+          'Erro ao Adicionar',
+          response.message || `Não foi possível adicionar a pizza.`,
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao tentar confirmar opções de pizza:', error);
+    }
+  };
+
   const renderItem = ({item}: {item: Pizza}) => {
-    const isPizza = item.categoria?.toLowerCase() === 'pizza';
+    const precoExibicao =
+      typeof item.precoPequena === 'number'
+        ? `R$ ${item.precoPequena.toFixed(2)}`
+        : item.preco > 0
+        ? `R$ ${item.preco.toFixed(2)}`
+        : 'Preço Indisp.';
+
     return (
       <View style={styles.itemContainer}>
-        <View style={styles.row}>
-          {isPizza ? (
-            <TouchableOpacity onPress={() => handleRemovePizza(item)}>
-              <Icon name="minus-circle" size={25} color="#ff6347" />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.buttonPlaceholder} />
-          )}
-          <Text style={styles.quantity}>
-            {isPizza ? quantities[item?.id] || 0 : ''}
-          </Text>
-          <TouchableOpacity onPress={() => handleAddItemClick(item)}>
-            <Icon name="plus-circle" size={25} color="#32cd32" />
-          </TouchableOpacity>
-          <Text style={styles.itemTitle}>
-            {item?.nome || 'Nome Indisponível'}
-          </Text>
-        </View>
+        <Text style={styles.itemTitle}>
+          {item?.nome || 'Nome Indisponível'}
+        </Text>
         <Text style={styles.itemDescription}>
           {item?.ingredientes || item?.detalhes || 'Detalhes indisponíveis'}
         </Text>
-        <Text style={styles.itemPrice}>{`R$ ${(item?.preco ?? 0).toFixed(
-          2,
-        )}`}</Text>
+        <Text style={styles.itemPrice}>{precoExibicao}</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => handleAddItem(item)}>
+          <Text style={styles.addButtonText}>Adicionar</Text>
+        </TouchableOpacity>
       </View>
     );
   };
 
-  // --- Render Menu Item ---
   const renderMenuItem = ({item}: {item: Pizza}) => (
     <TouchableOpacity
       style={styles.menuItemOuterContainer}
-      onPress={() => handleMenuPizzaClick(item)}
+      onPress={() => handleAddItem(item)}
       disabled={!item || item.id == null}>
       <View style={styles.menuItemImageBackground}>
         {item?.caminho ? (
@@ -398,41 +437,41 @@ export default function Feed() {
           </View>
         )}
       </View>
-      <Text style={styles.menuItemText} numberOfLines={2}>
+      <Text style={styles.menuItemText} numberOfLines={1}>
         {item?.nome || '???'}
       </Text>
+      {typeof item.precoPequena === 'number' && (
+        <Text style={styles.menuItemPrice}>
+          R$ {item.precoPequena.toFixed(2)}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 
-  // --- Estrutura JSX ---
   return (
     <View style={styles.container}>
-      {/* Container para Filtros e Busca */}
       <View style={styles.filtersContainer}>
-        {/* Picker */}
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={selectedCategory}
             style={styles.picker}
             onValueChange={itemValue => setSelectedCategory(itemValue)}
             mode="dropdown"
-            prompt="Selecione Categoria"
             dropdownIconColor="#FFA500">
-            {categories.map((category, index) => (
+            {categories.map((cat, idx) => (
               <Picker.Item
-                key={index}
-                label={category}
-                value={category}
+                key={idx}
+                label={cat}
+                value={cat}
                 style={styles.pickerItem}
               />
             ))}
           </Picker>
         </View>
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar por nome..."
+            placeholder="Buscar..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#888"
@@ -443,10 +482,8 @@ export default function Feed() {
         </View>
       </View>
 
-      {/* Menu Horizontal (AGORA USANDO DADOS FILTRADOS) */}
       <View style={styles.menuContainer}>
-        {/* Mostra loader APENAS se estiver carregando E a lista original ainda estiver vazia */}
-        {loading && produtos.length === 0 ? (
+        {loading && !produtos.length ? (
           <ActivityIndicator
             style={{paddingVertical: 20}}
             size="small"
@@ -454,21 +491,16 @@ export default function Feed() {
           />
         ) : (
           <FlatList
-            // ***** ALTERAÇÃO PRINCIPAL AQUI *****
-            data={filteredItems} // Usa a mesma lista filtrada da vertical
-            keyExtractor={(item, index) => `menu-${item?.id ?? index}`}
+            data={filteredItems}
+            keyExtractor={(it, idx) => `menu-${it?.id ?? idx}`}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.menuList}
-            renderItem={renderMenuItem} // Reutiliza a função de renderização do item do menu
+            renderItem={renderMenuItem}
             ListEmptyComponent={
-              // Mostra mensagem apenas se não estiver carregando E a lista filtrada estiver vazia
-              !loading && filteredItems.length === 0 ? (
+              !loading && !filteredItems.length ? (
                 <Text style={styles.emptyMenu}>
-                  {/* Mensagem varia se a lista original tem itens ou não */}
-                  {produtos.length > 0
-                    ? 'Nenhum item para os filtros.'
-                    : 'Nenhum item no menu.'}
+                  {produtos.length ? 'Filtros sem resultado.' : 'Menu vazio.'}
                 </Text>
               ) : null
             }
@@ -476,7 +508,6 @@ export default function Feed() {
         )}
       </View>
 
-      {/* Banner */}
       <View style={styles.banner}>
         <Image
           source={require('../../assets/banner.png')}
@@ -485,8 +516,7 @@ export default function Feed() {
         />
       </View>
 
-      {/* Lista Principal Vertical */}
-      {loading && produtos.length === 0 ? (
+      {loading && !produtos.length ? (
         <ActivityIndicator
           style={{marginTop: 50}}
           size="large"
@@ -494,55 +524,92 @@ export default function Feed() {
         />
       ) : (
         <FlatList
-          data={filteredItems} // Já usava a lista filtrada
-          keyExtractor={(item, index) => `main-${item?.id ?? index}`}
-          renderItem={renderItem} // Função de renderização da lista principal
+          data={filteredItems}
+          keyExtractor={(it, idx) => `main-${it?.id ?? idx}`}
+          renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyListContainer}>
               <Text style={styles.empty}>
-                {!loading && produtos.length === 0
-                  ? 'Nenhum item disponível no momento.'
-                  : 'Nenhum item encontrado para os filtros aplicados.'}
+                {!loading && !produtos.length
+                  ? 'Itens não disponíveis.'
+                  : 'Nenhum item para os filtros.'}
               </Text>
             </View>
           }
         />
       )}
 
-      {/* Modal */}
       <Modal
-        animationType="fade"
-        transparent
-        visible={modalVisible}
-        onRequestClose={handleCancelAddition}>
+        animationType="slide"
+        transparent={true}
+        visible={pizzaOptionsModalVisible}
+        onRequestClose={() => {
+          setPizzaOptionsModalVisible(false);
+          setCurrentPizzaForOptions(null);
+        }}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalMessage}>{modalMessage}</Text>
-            <View style={styles.modalButtons}>
-              {modalMessage &&
-              !modalMessage.includes('logado') &&
-              selectedPizzas.length > 0 ? (
-                <>
-                  <Button
-                    title="Adicionar"
-                    onPress={handleConfirmAddition}
-                    color="#FFA500"
-                  />
-                  <View style={{width: 10}} />
-                  <Button
-                    title="Cancelar"
-                    onPress={handleCancelAddition}
-                    color="#ff6347"
-                  />
-                </>
-              ) : (
-                <Button
-                  title="OK"
-                  onPress={handleCancelAddition}
-                  color="#FFA500"
-                />
-              )}
+          <View style={styles.pizzaOptionsModalContent}>
+            <Text style={styles.modalTitle}>
+              {currentPizzaForOptions?.nome}
+            </Text>
+
+            <Text style={styles.pickerLabel}>Tamanho:</Text>
+            <View style={styles.modalPickerContainer}>
+              <Picker
+                selectedValue={selectedTamanhoModal}
+                style={styles.modalPicker}
+                onValueChange={itemValue =>
+                  setSelectedTamanhoModal(itemValue as PizzaTamanho)
+                }
+                mode="dropdown">
+                {currentPizzaForOptions?.precoPequena !== null && (
+                  <Picker.Item label="Pequena" value="pequena" />
+                )}
+                {currentPizzaForOptions?.precoMedia !== null && (
+                  <Picker.Item label="Média" value="media" />
+                )}
+                {currentPizzaForOptions?.precoGrande !== null && (
+                  <Picker.Item label="Grande" value="grande" />
+                )}
+              </Picker>
+            </View>
+
+            <Text style={styles.pickerLabel}>Tipo:</Text>
+            <View style={styles.modalPickerContainer}>
+              <Picker
+                selectedValue={selectedTipoModal}
+                style={styles.modalPicker}
+                onValueChange={itemValue =>
+                  setSelectedTipoModal(itemValue as PizzaTipo)
+                }
+                enabled={selectedTamanhoModal !== 'pequena'}
+                mode="dropdown">
+                <Picker.Item label="Inteira" value="inteira" />
+                {selectedTamanhoModal !== 'pequena' && (
+                  <Picker.Item label="Meia" value="meia" />
+                )}
+              </Picker>
+            </View>
+
+            <Text style={styles.modalPrice}>
+              Preço: R$ {calculatedPriceModal.toFixed(2)}
+            </Text>
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setPizzaOptionsModalVisible(false);
+                  setCurrentPizzaForOptions(null);
+                }}>
+                <Text style={styles.modalButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={handleConfirmPizzaOptions}>
+                <Text style={styles.modalButtonText}>Confirmar</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -551,13 +618,11 @@ export default function Feed() {
   );
 }
 
-// --- Estilos ---
+// --- Estilos --- (Mantidos como antes, não vou repetir para economizar espaço)
 const IMAGE_SIZE = 55;
 const BORDER_WIDTH = 2;
 const IMAGE_WITH_BORDER_SIZE = IMAGE_SIZE + BORDER_WIDTH * 2;
-const BUTTON_ICON_SIZE = 25;
 
-// (Colar aqui os estilos completos da sua versão anterior)
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: '#f8f8f8'},
   filtersContainer: {
@@ -612,12 +677,12 @@ const styles = StyleSheet.create({
   menuList: {
     paddingHorizontal: 10,
     alignItems: 'flex-start',
-    minHeight: IMAGE_WITH_BORDER_SIZE + 30,
-  }, // Garante altura mínima para mensagem de vazio
+    minHeight: IMAGE_WITH_BORDER_SIZE + 50,
+  },
   menuItemOuterContainer: {
     alignItems: 'center',
     marginHorizontal: 8,
-    width: IMAGE_WITH_BORDER_SIZE + 10,
+    width: IMAGE_WITH_BORDER_SIZE + 30,
   },
   menuItemImageBackground: {
     width: IMAGE_WITH_BORDER_SIZE,
@@ -646,20 +711,25 @@ const styles = StyleSheet.create({
   placeholderImage: {backgroundColor: '#f0f0f0'},
   menuItemText: {
     color: '#555',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 2,
     paddingHorizontal: 2,
   },
+  menuItemPrice: {
+    color: '#FFA500',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 1,
+  },
   emptyMenu: {
-    // Estilo para mensagem de menu vazio
     paddingHorizontal: 20,
     color: '#999',
     textAlign: 'center',
-    // Tenta centralizar verticalmente no espaço do menu
-    lineHeight: IMAGE_WITH_BORDER_SIZE + 20, // Ajuste conforme altura do menu
-    width: '100%', // Ocupa a largura
+    lineHeight: IMAGE_WITH_BORDER_SIZE + 20,
+    width: '100%',
     alignSelf: 'center',
   },
   banner: {
@@ -677,7 +747,7 @@ const styles = StyleSheet.create({
   },
   list: {width: '100%', paddingHorizontal: 16, paddingBottom: 20},
   itemContainer: {
-    padding: 16,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     backgroundColor: '#fff',
@@ -689,38 +759,100 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 1.5,
   },
-  row: {flexDirection: 'row', alignItems: 'center', marginBottom: 8},
-  buttonPlaceholder: {width: BUTTON_ICON_SIZE},
-  quantity: {
-    fontSize: 18,
-    marginHorizontal: 12,
-    fontWeight: 'bold',
-    color: '#333',
-    minWidth: 25,
-    textAlign: 'center',
-    lineHeight: BUTTON_ICON_SIZE,
-  },
-  itemTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    marginLeft: 12,
-    color: '#333',
-    flex: 1,
-  },
-  itemDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 16,
-    paddingLeft: 0,
-    marginBottom: 8,
-  },
+  itemTitle: {fontSize: 17, fontWeight: 'bold', color: '#333', marginBottom: 5},
+  itemDescription: {fontSize: 14, color: '#666', marginBottom: 8},
   itemPrice: {
     fontSize: 16,
     color: '#4CAF50',
     fontWeight: 'bold',
-    alignSelf: 'flex-end',
-    marginRight: 10,
-    marginTop: 4,
+    marginBottom: 10,
+  },
+  addButton: {
+    backgroundColor: '#FFA500',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  pizzaOptionsModalContent: {
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#333',
+  },
+  pickerLabel: {
+    fontSize: 16,
+    color: '#555',
+    alignSelf: 'flex-start',
+    marginLeft: 10,
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  modalPickerContainer: {
+    width: '100%',
+    height: 50,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 15,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  modalPicker: {
+    height: '100%',
+    width: '100%',
+    color: '#333',
+  },
+  modalPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#E53935',
+    marginVertical: 20,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  modalButtonConfirm: {
+    backgroundColor: '#4CAF50',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#f44336',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   emptyListContainer: {
     flex: 1,
@@ -730,30 +862,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   empty: {textAlign: 'center', fontSize: 16, color: '#999'},
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    padding: 25,
-    borderRadius: 10,
-    width: '85%',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  modalMessage: {
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 25,
-    color: '#333',
-    lineHeight: 24,
-  },
-  modalButtons: {flexDirection: 'row', justifyContent: 'center', width: '100%'},
 });
