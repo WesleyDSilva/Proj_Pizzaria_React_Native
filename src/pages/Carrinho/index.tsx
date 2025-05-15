@@ -1,4 +1,13 @@
-import React, {useState, useContext, useCallback, useMemo} from 'react';
+// Arquivo: src/pages/Carrinho/index.tsx
+
+import React, {
+  useState,
+  useContext,
+  useCallback,
+  useMemo,
+  Dispatch, // Importado para tipagem correta de setCarrinho
+  SetStateAction, // Importado para tipagem correta de setCarrinho
+} from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,52 +18,67 @@ import {
   TouchableOpacity,
   Image,
   Platform,
-  Modal, // <-- Imported Modal
-  TextInput, // <-- Imported TextInput
-  KeyboardAvoidingView, // <-- Imported KeyboardAvoidingView
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import axios from 'axios';
+import axios from 'axios'; // Import do Axios
 import {AuthContext} from '../../contexts/AuthContext';
+// Importa CarrinhoItem do contexto. ELA DEVE ESTAR ATUALIZADA NO ARQUIVO DO CONTEXTO!
 import {useCarrinho, CarrinhoItem} from '../../contexts/CarrinhoContext';
 import {useFocusEffect} from '@react-navigation/native';
+// import { useNavigation } from '@react-navigation/native'; // Descomente se precisar de navegação
 
-// *** ADDED INTERFACE DEFINITION BACK ***
-// Interface for grouped items in the FlatList
+// Interface para os itens como vêm da API PHP (api_get_carrinho.php)
+interface ItemDaApi {
+  id_item_pedido: number;
+  cliente_id?: number;
+  produto_id_api: number;
+  tamanho_pedido: string | null;
+  tipo_tamanho_pedido: string | null;
+  total_item_pedido: number;
+  nome_produto: string;
+  caminho_imagem_produto?: string;
+  status_item_pedido: string;
+}
+
+// Interface para itens agrupados na FlatList
 interface GrupoCarrinhoItem {
   key: string;
-  pizza_id: number;
-  nome_pizza: string;
-  tipo_pizza: string;
+  produto_id: number;
+  nome_produto: string;
+  tipo_tamanho: string;
+  tamanho: string;
   precoUnitario: number;
   quantidade: number;
   precoTotalGrupo: number;
-  primeiroItemId: number;
+  primeiroItemIdNoPedido: number;
   caminho_imagem?: string;
+  status_item: string;
 }
-// *** END ADDED INTERFACE DEFINITION ***
 
-// API URL to fetch the cart
+// --- URLs DAS APIs ---
 const API_GET_CARRINHO_URL =
-  'https://devweb3.ok.etc.br/api/api_get_carrinho.php';
-
-// --- Define the correct URL for the create order PHP script ---
+  'https://devweb3.ok.etc.br/api_mobile/api_get_carrinho.php';
+const API_REGISTRAR_ITEM_PEDIDO_URL =
+  'https://devweb3.ok.etc.br/api_mobile/api_registrar_item_pedido.php';
+const API_DELETAR_ITEM_PEDIDO_URL =
+  'https://devweb3.ok.etc.br/api_mobile/api_delete_item_pedido.php';
+const API_DELETAR_ITENS_POR_PRODUTO_URL =
+  'https://devweb3.ok.etc.br/api_mobile/api_delete_itens_por_produto.php';
 const API_CRIAR_PEDIDO_URL =
-  'https://devweb3.ok.etc.br/api/api_criar_pedido.php'; // <-- Confirm this is correct
+  'https://devweb3.ok.etc.br/api/api_criar_pedido.php';
+const API_PEDIDO_FAVORITO_URL =
+  'https://devweb3.ok.etc.br/api/api_pedido_favorito.php';
 
-const Carrinho = () => {
+const CarrinhoScreen = () => {
   const {user} = useContext(AuthContext);
-  // Assuming limparCarrinho exists in your context
-  const {
-    carrinho,
-    setCarrinho,
-    removerPizza,
-    removerTodasAsPizzasDoTipo,
-    limparCarrinho,
-  } = useCarrinho();
-  // const navigation = useNavigation(); // <-- Initialize navigation hook if needed to navigate away
+  const {carrinho, setCarrinho, limparCarrinho} = useCarrinho();
+  // const navigation = useNavigation();
 
-  const [loading, setLoading] = useState(false);
+  // Estados que estavam faltando devido à ausência de imports
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [itemLoading, setItemLoading] = useState<{[key: string]: boolean}>({});
   const [deletingAllType, setDeletingAllType] = useState<number | null>(null);
@@ -65,10 +89,8 @@ const Carrinho = () => {
   const [observacao, setObservacao] = useState('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // --- Fetch Cart Data ---
-  const fetchCarrinho = useCallback(async () => {
+  const fetchCarrinhoData = useCallback(async () => {
     if (!user?.id) {
-      console.log('Fetch cancelled: user not logged in.');
       setCarrinho([]);
       setLoading(false);
       return;
@@ -76,62 +98,60 @@ const Carrinho = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
+      const response = await axios.get<ItemDaApi[]>(
         `${API_GET_CARRINHO_URL}?cliente_id=${user.id}`,
       );
 
       if (Array.isArray(response.data)) {
-        const rawData: any[] = response.data;
-        const carrinhoData: CarrinhoItem[] = rawData.map((item: any) => ({
-          id: Number(item.carrinho_id),
-          pizza_id: Number(item.pizza_id),
-          preco: parseFloat(item.preco) || 0,
-          nome_pizza: item.nome_pizza || 'Pizza Desconhecida',
-          tipo_pizza: item.tipo_pizza || 'N/A',
-          cliente_id: user.id ? Number(user.id) : undefined,
-          caminho_imagem: item.caminho_imagem || undefined,
-        }));
-        setCarrinho(carrinhoData);
+        const rawDataFromApi: ItemDaApi[] = response.data;
+        const carrinhoDataParaContexto: CarrinhoItem[] = rawDataFromApi.map(
+          (apiItem): CarrinhoItem => ({
+            id: apiItem.id_item_pedido,
+            produto_id: apiItem.produto_id_api,
+            preco: apiItem.total_item_pedido || 0,
+            nome_produto: apiItem.nome_produto || 'Item Desconhecido',
+            tipo_tamanho: apiItem.tipo_tamanho_pedido,
+            tamanho: apiItem.tamanho_pedido,
+            caminho_imagem: apiItem.caminho_imagem_produto || undefined,
+            status_pedido: apiItem.status_item_pedido || 'PENDENTE',
+          }),
+        );
+        setCarrinho(carrinhoDataParaContexto);
       } else if (
         response.data &&
-        response.data.error === false &&
-        response.data.message ===
-          'Nenhum item encontrado no carrinho para este cliente.' // Specific check for the PHP message
-      ) {
-        console.log('Cart empty (API response):', response.data.message);
-        setCarrinho([]); // Ensure cart is empty locally
-      } else if (
-        response.data &&
-        response.data.error === false &&
-        response.data.message
-      ) {
-        // General empty message check
-        console.log('Cart empty (API response):', response.data.message);
-        setCarrinho([]);
-      } else if (response.data && response.data.error === true) {
-        console.error('API Error fetching cart:', response.data.message);
-        setError(response.data.message || 'Error returned by API.');
-        setCarrinho([]);
-      } else {
-        // Handle case where response.data might be null, empty object, or other unexpected format indicating empty
-        if (
-          response.data === null ||
+        ((response.data as any).message ===
+          'Nenhum item encontrado no carrinho para este cliente.' ||
           (typeof response.data === 'object' &&
             Object.keys(response.data).length === 0) ||
-          response.data === ''
-        ) {
-          console.log('Cart is empty (received empty or null response).');
-          setCarrinho([]);
-        } else {
-          console.warn('Unexpected API response format:', response.data);
-          setError('Error in API response format.');
-          setCarrinho([]);
-        }
+          response.data === null ||
+          response.data === '')
+      ) {
+        setCarrinho([]);
+      } else if ((response.data as any)?.error === true) {
+        setError((response.data as any).message || 'Erro da API.');
+        setCarrinho([]);
+      } else {
+        setError('Formato de resposta inesperado.');
+        setCarrinho([]);
       }
     } catch (err: any) {
-      console.error('Error fetching cart (axios/network):', err);
-      const errorMessage =
-        err.response?.data?.message || err.message || 'Could not load cart.';
+      let errorMessage = 'Falha ao carregar itens.';
+      if (
+        err.message &&
+        err.message.includes('Text strings must be rendered')
+      ) {
+        errorMessage = 'Erro de renderização. Verifique o console.';
+      } else if (err.response) {
+        errorMessage = String(
+          err.response.data?.message ||
+            err.response.statusText ||
+            'Erro do servidor.',
+        );
+      } else if (err.request) {
+        errorMessage = 'Sem resposta do servidor.';
+      } else {
+        errorMessage = String(err.message || 'Erro desconhecido.');
+      }
       setError(errorMessage);
       setCarrinho([]);
     } finally {
@@ -139,78 +159,77 @@ const Carrinho = () => {
     }
   }, [user, setCarrinho]);
 
-  // Fetch cart when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchCarrinho();
-    }, [fetchCarrinho]),
+      fetchCarrinhoData();
+    }, [fetchCarrinhoData]),
   );
 
-  // --- Group Cart Items ---
-  const gruposCarrinho = useMemo(() => {
-    const grupos: Map<string, GrupoCarrinhoItem> = new Map(); // Use the interface here
-    carrinho.forEach(item => {
-      const groupKey = `${item.pizza_id}-${item.tipo_pizza}`;
+  const gruposCarrinho = useMemo((): GrupoCarrinhoItem[] => {
+    const grupos: Map<string, GrupoCarrinhoItem> = new Map();
+    if (!Array.isArray(carrinho)) return [];
+    carrinho.forEach((item: CarrinhoItem) => {
+      const tipoKey = item.tipo_tamanho || 'N/A';
+      const tamanhoKey = item.tamanho || 'N/A';
+      const groupKey = `${item.produto_id}-${tipoKey}-${tamanhoKey}`;
+
       if (grupos.has(groupKey)) {
         const g = grupos.get(groupKey)!;
         g.quantidade += 1;
         g.precoTotalGrupo += item.preco || 0;
       } else {
         grupos.set(groupKey, {
-          // Ensure properties match GrupoCarrinhoItem
           key: groupKey,
-          pizza_id: item.pizza_id,
-          nome_pizza: item.nome_pizza || 'Pizza',
-          tipo_pizza: item.tipo_pizza || 'N/A',
+          produto_id: item.produto_id,
+          nome_produto: item.nome_produto,
+          tipo_tamanho: tipoKey,
+          tamanho: tamanhoKey,
           precoUnitario: item.preco || 0,
           quantidade: 1,
           precoTotalGrupo: item.preco || 0,
-          primeiroItemId: item.id,
+          primeiroItemIdNoPedido: item.id,
           caminho_imagem: item.caminho_imagem,
+          status_item: item.status_pedido || 'PENDENTE',
         });
       }
     });
     return Array.from(grupos.values());
   }, [carrinho]);
 
-  // --- Calculate Total ---
   const total = useMemo(
-    () => gruposCarrinho.reduce((acc, g) => acc + g.precoTotalGrupo, 0),
+    () => gruposCarrinho.reduce((acc, grupo) => acc + grupo.precoTotalGrupo, 0),
     [gruposCarrinho],
   );
 
-  // --- Item Interaction Handlers ---
   const handleIncrementItem = async (grupo: GrupoCarrinhoItem) => {
-    // Use the interface here
     if (!user?.id) {
-      Alert.alert('Error', 'Login required to modify cart.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
     setItemLoading(prev => ({...prev, [grupo.key]: true}));
     try {
-      const res = await axios.post(
-        'https://devweb3.ok.etc.br/api/api_registrar_carrinho.php',
-        {
-          cliente_id: Number(user.id),
-          pizza_id: grupo.pizza_id,
-          preco: grupo.precoUnitario,
-          nome_pizza: grupo.nome_pizza,
-          tipo_pizza: grupo.tipo_pizza,
-        },
-      );
-      if (res.data.success || res.status === 200 || res.status === 201) {
-        await fetchCarrinho();
+      const payload = {
+        cliente_id: Number(user.id),
+        pizza_id: grupo.produto_id,
+        preco: grupo.precoUnitario,
+        tamanho_selecionado:
+          grupo.tamanho === 'N/A' ? 'pequena' : grupo.tamanho,
+        tipo_pizza:
+          grupo.tipo_tamanho === 'N/A' ? 'inteira' : grupo.tipo_tamanho,
+      };
+      const res = await axios.post(API_REGISTRAR_ITEM_PEDIDO_URL, payload);
+      if (res.data.success) {
+        await fetchCarrinhoData();
       } else {
         Alert.alert(
-          'Error Adding',
-          res.data.message || 'Could not add item to cart.',
+          'Erro ao Adicionar',
+          res.data.message || 'Não foi possível adicionar.',
         );
       }
     } catch (err: any) {
-      console.error('Error incrementing item:', err);
       Alert.alert(
-        'Network Error',
-        err.response?.data?.message || 'Could not add item.',
+        'Erro de Rede',
+        err.response?.data?.message || 'Não foi possível adicionar.',
       );
     } finally {
       setItemLoading(prev => ({...prev, [grupo.key]: false}));
@@ -218,47 +237,28 @@ const Carrinho = () => {
   };
 
   const handleDecrementItem = async (grupo: GrupoCarrinhoItem) => {
-    // Use the interface here
     if (!user?.id) {
-      Alert.alert('Error', 'Login required to modify cart.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
     if (grupo.quantidade <= 0) return;
-
-    const itemParaRemover = carrinho.find(
-      i => i.pizza_id === grupo.pizza_id && i.tipo_pizza === grupo.tipo_pizza,
-    );
-
-    if (!itemParaRemover) {
-      console.error(
-        `Error: Não foi possível encontrar o carrinho no grupo ${grupo.key} para remover.`,
-      );
-      Alert.alert(
-        'Internal Error',
-        'Não foi possível identificar o item a ser removido.',
-      );
-      return;
-    }
-    const idParaRemover = itemParaRemover.id;
+    const idItemPedidoParaRemover = grupo.primeiroItemIdNoPedido;
 
     setItemLoading(prev => ({...prev, [grupo.key]: true}));
     try {
-      const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho_item.php?id=${idParaRemover}`;
-      const res = await axios.get(url);
-
-      if (res.data.success || res.status === 200) {
-        await fetchCarrinho();
+      const url = `${API_DELETAR_ITEM_PEDIDO_URL}?id_item_pedido=${idItemPedidoParaRemover}`;
+      const res = await axios.delete(url);
+      if (res.data.success) {
+        await fetchCarrinhoData();
       } else {
-        console.error('API error removing item:', res.data);
         Alert.alert(
-          'Error Removing',
+          'Erro ao Remover',
           res.data.message || 'Não foi possível remover.',
         );
       }
     } catch (err: any) {
-      console.error('Network/axios error decrementing item:', err);
       Alert.alert(
-        'Network Error',
+        'Erro de Rede',
         err.response?.data?.message || 'Não foi possível remover.',
       );
     } finally {
@@ -267,48 +267,39 @@ const Carrinho = () => {
   };
 
   const handleDeleteAllOfType = async (
-    pizza_id: number,
-    nome_pizza: string,
+    produto_id_do_grupo: number,
+    nome_produto_do_grupo: string,
   ) => {
     if (!user?.id) {
-      Alert.alert('Error', 'Login necessário para modificar o carrinho.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
     Alert.alert(
-      'Remover tudo?',
-      `Tem certeza que deseja remover "${nome_pizza}" do carrinho?`,
+      'Remover Todos?',
+      `Tem certeza que deseja remover todos os itens de "${nome_produto_do_grupo}" do pedido?`,
       [
         {text: 'Cancelar', style: 'cancel'},
         {
           text: 'Remover',
           style: 'destructive',
           onPress: async () => {
-            setDeletingAllType(pizza_id);
+            setDeletingAllType(produto_id_do_grupo);
             try {
-              const url = `https://devweb3.ok.etc.br/api/api_delete_carrinho.php?pizza_id=${pizza_id}&cliente_id=${Number(
-                user.id,
-              )}`;
-              const res = await axios.get(url);
-
-              if (res.data.success || res.status === 200) {
-                await fetchCarrinho();
-                console.log(
-                  `All "${nome_pizza}" pizzas (ID: ${pizza_id}) removed.`,
-                );
+              const url = `${API_DELETAR_ITENS_POR_PRODUTO_URL}?cliente_id=${user.id}&produto_id=${produto_id_do_grupo}`;
+              const res = await axios.delete(url);
+              if (res.data.success) {
+                await fetchCarrinhoData();
               } else {
                 Alert.alert(
-                  'Error Removing',
-                  res.data.message || 'Não foi possível remover.',
+                  'Erro ao Remover',
+                  res.data.message || 'Não foi possível remover os itens.',
                 );
               }
             } catch (err: any) {
-              console.error(
-                `Error removing all pizzas of type ${pizza_id}:`,
-                err,
-              );
               Alert.alert(
-                'Network Error',
-                err.response?.data?.message || 'Não foi possível remover.',
+                'Erro de Rede',
+                err.response?.data?.message ||
+                  'Não foi possível remover os itens.',
               );
             } finally {
               setDeletingAllType(null);
@@ -321,107 +312,78 @@ const Carrinho = () => {
   };
 
   const handleFavorite = async (grupo: GrupoCarrinhoItem) => {
-    // Use the interface here
     if (!user?.id) {
-      Alert.alert('Error', 'Login necessário para favoritar.');
+      Alert.alert('Erro', 'Login necessário.');
       return;
     }
     setFavoritingItemKey(grupo.key);
-
     const payload = {
       pizzas: [
         {
           cliente_id: Number(user.id),
-          pizza_id: grupo.pizza_id,
-          nome_pizza: grupo.nome_pizza,
+          pizza_id: grupo.produto_id,
+          nome_pizza: grupo.nome_produto,
           preco: grupo.precoUnitario,
         },
       ],
     };
-
-    if (
-      !payload.pizzas[0].cliente_id ||
-      !payload.pizzas[0].pizza_id ||
-      !payload.pizzas[0].nome_pizza ||
-      payload.pizzas[0].preco === undefined
-    ) {
-      Alert.alert('Internal Error', 'Dados incompletos para favoritar.');
+    if (!payload.pizzas[0].pizza_id || !payload.pizzas[0].nome_pizza) {
+      Alert.alert('Erro Interno', 'Dados para favoritar incompletos.');
       setFavoritingItemKey(null);
       return;
     }
-
     try {
-      const res = await axios.post(
-        'https://devweb3.ok.etc.br/api/api_pedido_favorito.php',
-        payload,
-      );
-
+      const res = await axios.post(API_PEDIDO_FAVORITO_URL, payload);
       if (res.data.success) {
         Alert.alert(
           'Favoritado!',
-          `"${grupo.nome_pizza}"Adicionado aos favoritos.`,
+          `"${grupo.nome_produto}" adicionado aos favoritos.`,
         );
       } else {
         Alert.alert(
-          'Error Favoriting',
+          'Erro ao Favoritar',
           res.data.message || 'Não foi possível favoritar.',
         );
       }
     } catch (err: any) {
-      console.error('Error ao favoritar:', err);
       Alert.alert(
-        'Network Error',
+        'Erro de Rede',
         err.response?.data?.message || 'Não foi possível favoritar.',
       );
     } finally {
-      setTimeout(() => {
-        setFavoritingItemKey(null);
-      }, 300);
+      setTimeout(() => setFavoritingItemKey(null), 300);
     }
   };
 
-  // --- Checkout Function ---
   const proceedToCheckout = async (obs: string) => {
     if (!user?.id) {
-      Alert.alert('Erro', 'Usuário não identificado para finalizar o pedido.');
+      Alert.alert('Erro', 'Usuário não identificado.');
       setIsModalVisible(false);
       return;
     }
     if (carrinho.length === 0) {
-      Alert.alert(
-        'Carrinho Vazio',
-        'Adicione itens ao carrinho antes de finalizar.',
-      );
+      Alert.alert('Carrinho Vazio', 'Adicione itens antes de finalizar.');
       setIsModalVisible(false);
       return;
     }
-
     setIsCheckingOut(true);
     setIsModalVisible(false);
-
     try {
       const response = await axios.post(API_CRIAR_PEDIDO_URL, {
-        // Use correct API URL
         cliente_id: user.id,
-        observacao: obs.trim(), // Trim whitespace from observation
+        observacao: obs.trim(),
       });
-
       if (response.data && response.data.success) {
         Alert.alert(
           'Pedido Finalizado',
-          `Seu pedido (${
-            response.data.n_pedido || ''
-          }) foi enviado com sucesso!`,
+          `Seu pedido (${response.data.n_pedido || ''}) foi enviado!`,
         );
-        // Clear local cart state
         if (limparCarrinho) {
           limparCarrinho();
         } else {
           setCarrinho([]);
         }
         setObservacao('');
-        // Optional: Navigate
-        // navigation.navigate('OrderConfirmation', { orderId: response.data.n_pedido });
       } else {
         Alert.alert(
           'Erro ao Finalizar',
@@ -429,27 +391,24 @@ const Carrinho = () => {
         );
       }
     } catch (checkoutError: any) {
-      console.error('Checkout failed:', checkoutError);
       Alert.alert(
         'Erro de Rede',
         checkoutError.response?.data?.message ||
-          'Não foi possível conectar ao servidor para finalizar o pedido.',
+          'Não foi possível conectar ao servidor.',
       );
     } finally {
       setIsCheckingOut(false);
     }
   };
 
-  // --- Render Logic ---
   if (loading && carrinho.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#FFA500" />
-        <Text style={styles.loadingText}>Loading cart...</Text>
+        <Text style={styles.loadingText}>Carregando seu pedido...</Text>
       </View>
     );
   }
-
   if (error) {
     return (
       <View style={styles.centered}>
@@ -459,14 +418,15 @@ const Carrinho = () => {
           color="#D32F2F"
           style={styles.iconError}
         />
-        <Text style={styles.error}>{error}</Text>
-        <TouchableOpacity onPress={fetchCarrinho} style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>Tente novamente</Text>
+        <Text style={styles.error}>{String(error)}</Text>
+        <TouchableOpacity
+          onPress={fetchCarrinhoData}
+          style={styles.retryButton}>
+          <Text style={styles.retryButtonText}>Tentar Novamente</Text>
         </TouchableOpacity>
       </View>
     );
   }
-
   if (!loading && gruposCarrinho.length === 0 && !isCheckingOut) {
     return (
       <View style={styles.centered}>
@@ -476,26 +436,22 @@ const Carrinho = () => {
           color="#adb5bd"
           style={styles.iconEmpty}
         />
-        <Text style={styles.message}>Seu carrinho está vazio.</Text>
-        <Text style={styles.messageSub}>Adicione algumas pizas.</Text>
+        <Text style={styles.message}>Seu pedido está vazio.</Text>
+        <Text style={styles.messageSub}>Adicione alguns itens saborosos!</Text>
       </View>
     );
   }
 
-  // --- Main Render ---
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>MEU CARRINHO</Text>
+      <Text style={styles.title}>MEU PEDIDO</Text>
       <FlatList
-        data={gruposCarrinho} // Use the grouped data
+        data={gruposCarrinho}
         keyExtractor={item => item.key}
         renderItem={({item: grupo}: {item: GrupoCarrinhoItem}) => {
-          // Explicitly type item here
           const isFavoriting = favoritingItemKey === grupo.key;
-
           return (
             <View style={styles.itemContainer}>
-              {/* Left Part: Image */}
               <View style={styles.imageBorderContainer}>
                 {grupo.caminho_imagem ? (
                   <Image
@@ -504,7 +460,7 @@ const Carrinho = () => {
                     resizeMode="cover"
                     onError={e =>
                       console.warn(
-                        `Error loading image ${grupo.caminho_imagem}:`,
+                        `Erro img ${grupo.caminho_imagem}:`,
                         e.nativeEvent.error,
                       )
                     }
@@ -515,27 +471,39 @@ const Carrinho = () => {
                   </View>
                 )}
               </View>
-
-              {/* Right Part: Content Area (Row) */}
               <View style={styles.contentAreaRow}>
-                {/* Info Column (Name/Price + Quantity Group) */}
                 <View style={styles.infoColumn}>
-                  {/* Name and Price */}
                   <View style={styles.namePriceContainer}>
                     <Text
                       style={styles.itemTextName}
-                      numberOfLines={1}
+                      numberOfLines={2}
                       ellipsizeMode="tail">
-                      {grupo.nome_pizza}
-                      {grupo.tipo_pizza !== 'N/A'
-                        ? ` - ${grupo.tipo_pizza}`
+                      {grupo.nome_produto}
+                      {(grupo.tamanho && grupo.tamanho !== 'N/A') ||
+                      (grupo.tipo_tamanho && grupo.tipo_tamanho !== 'N/A')
+                        ? ` (${
+                            grupo.tamanho && grupo.tamanho !== 'N/A'
+                              ? grupo.tamanho
+                              : ''
+                          }${
+                            grupo.tamanho &&
+                            grupo.tamanho !== 'N/A' &&
+                            grupo.tipo_tamanho &&
+                            grupo.tipo_tamanho !== 'N/A'
+                              ? ' '
+                              : ''
+                          }${
+                            grupo.tipo_tamanho && grupo.tipo_tamanho !== 'N/A'
+                              ? grupo.tipo_tamanho
+                              : ''
+                          })`.trim()
                         : ''}
                     </Text>
                     <Text style={styles.itemTextPrice}>
                       R$ {grupo.precoUnitario.toFixed(2)}
                     </Text>
+                    {/* <Text style={styles.itemStatus}>Status: {grupo.status_item}</Text> */}
                   </View>
-                  {/* Quantity Group (+/-) */}
                   <View style={styles.quantityGroupContainer}>
                     <View style={styles.quantityGroupBackground}>
                       <TouchableOpacity
@@ -543,7 +511,7 @@ const Carrinho = () => {
                         onPress={() => handleDecrementItem(grupo)}
                         disabled={
                           itemLoading[grupo.key] ||
-                          deletingAllType === grupo.pizza_id ||
+                          deletingAllType === grupo.produto_id ||
                           grupo.quantidade <= 1 ||
                           isFavoriting
                         }>
@@ -552,7 +520,7 @@ const Carrinho = () => {
                           size={16}
                           color={
                             itemLoading[grupo.key] ||
-                            deletingAllType === grupo.pizza_id ||
+                            deletingAllType === grupo.produto_id ||
                             grupo.quantidade <= 1 ||
                             isFavoriting
                               ? '#adb5bd'
@@ -576,7 +544,7 @@ const Carrinho = () => {
                         onPress={() => handleIncrementItem(grupo)}
                         disabled={
                           itemLoading[grupo.key] ||
-                          deletingAllType === grupo.pizza_id ||
+                          deletingAllType === grupo.produto_id ||
                           isFavoriting
                         }>
                         <Icon
@@ -584,7 +552,7 @@ const Carrinho = () => {
                           size={16}
                           color={
                             itemLoading[grupo.key] ||
-                            deletingAllType === grupo.pizza_id ||
+                            deletingAllType === grupo.produto_id ||
                             isFavoriting
                               ? '#adb5bd'
                               : '#388E3C'
@@ -594,8 +562,6 @@ const Carrinho = () => {
                     </View>
                   </View>
                 </View>
-
-                {/* Icons Column (Heart + Trash) */}
                 <View style={styles.iconsColumn}>
                   <TouchableOpacity
                     onPress={() => handleFavorite(grupo)}
@@ -603,7 +569,7 @@ const Carrinho = () => {
                     disabled={
                       isFavoriting ||
                       itemLoading[grupo.key] ||
-                      deletingAllType === grupo.pizza_id
+                      deletingAllType === grupo.produto_id
                     }>
                     <View style={styles.heartIconCircle}>
                       <Icon
@@ -616,15 +582,18 @@ const Carrinho = () => {
                   <TouchableOpacity
                     style={styles.trashButtonContainer}
                     onPress={() =>
-                      handleDeleteAllOfType(grupo.pizza_id, grupo.nome_pizza)
+                      handleDeleteAllOfType(
+                        grupo.produto_id,
+                        grupo.nome_produto,
+                      )
                     }
                     disabled={
-                      deletingAllType === grupo.pizza_id ||
+                      deletingAllType === grupo.produto_id ||
                       itemLoading[grupo.key] ||
                       isFavoriting
                     }>
                     <View style={styles.trashIconCircle}>
-                      {deletingAllType === grupo.pizza_id ? (
+                      {deletingAllType === grupo.produto_id ? (
                         <ActivityIndicator size="small" color="#515151" />
                       ) : (
                         <Icon name="trash" size={16} color="#495057" />
@@ -636,10 +605,9 @@ const Carrinho = () => {
             </View>
           );
         }}
-        ListFooterComponent={() => <View style={{height: 110}} />}
+        ListFooterComponent={() => <View style={{height: 120}} />}
       />
 
-      {/* Fixed Footer */}
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total:</Text>
@@ -648,7 +616,8 @@ const Carrinho = () => {
         <TouchableOpacity
           style={[
             styles.checkoutButton,
-            isCheckingOut && styles.checkoutButtonDisabled,
+            (isCheckingOut || carrinho.length === 0) &&
+              styles.checkoutButtonDisabled,
           ]}
           onPress={() => setIsModalVisible(true)}
           disabled={isCheckingOut || carrinho.length === 0}>
@@ -660,7 +629,6 @@ const Carrinho = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Observation Modal */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -681,9 +649,9 @@ const Carrinho = () => {
             </Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Ex: Tirar a cebola, ponto da carne..."
+              placeholder="Ex: Sem cebola, ponto da carne mal passado..."
               placeholderTextColor="#999"
-              multiline={true}
+              multiline
               numberOfLines={4}
               value={observacao}
               onChangeText={setObservacao}
@@ -726,6 +694,7 @@ const Carrinho = () => {
 };
 
 // --- Styles ---
+// (Copie e cole seus estilos aqui como estavam antes)
 const IMAGE_SIZE = 55;
 const IMAGE_BORDER_SPACE = 10;
 const BORDER_THICKNESS = 2;
@@ -812,6 +781,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#e63946',
     fontWeight: '700',
+  },
+  itemStatus: {
+    // Estilo opcional para o status
+    fontSize: 12,
+    color: '#6c757d',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   quantityGroupContainer: {
     marginTop: 8,
@@ -974,7 +950,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  // --- MODAL STYLES ---
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -1059,4 +1034,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Carrinho;
+export default CarrinhoScreen;
