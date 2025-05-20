@@ -34,7 +34,7 @@ import {useFocusEffect} from '@react-navigation/native';
 interface ItemDaApi {
   id_item_pedido: number;
   cliente_id?: number;
-  produto_id_api: number;
+  produto_id: number;
   tamanho_pedido: string | null;
   tipo_tamanho_pedido: string | null;
   total_item_pedido: number;
@@ -64,9 +64,9 @@ const API_GET_CARRINHO_URL =
 const API_REGISTRAR_ITEM_PEDIDO_URL =
   'https://devweb3.ok.etc.br/api_mobile/api_registrar_item_pedido.php';
 const API_DELETAR_ITEM_PEDIDO_URL =
-  'https://devweb3.ok.etc.br/api_mobile/api_delete_item_pedido.php';
+  'https://devweb3.ok.etc.br/api/api_delete_carrinho_item.php';
 const API_DELETAR_ITENS_POR_PRODUTO_URL =
-  'https://devweb3.ok.etc.br/api_mobile/api_delete_itens_por_produto.php';
+  'https://devweb3.ok.etc.br/api/api_delete_carrinho.php';
 const API_CRIAR_PEDIDO_URL =
   'https://devweb3.ok.etc.br/api/api_criar_pedido.php';
 const API_PEDIDO_FAVORITO_URL =
@@ -107,7 +107,7 @@ const CarrinhoScreen = () => {
         const carrinhoDataParaContexto: CarrinhoItem[] = rawDataFromApi.map(
           (apiItem): CarrinhoItem => ({
             id: apiItem.id_item_pedido,
-            produto_id: apiItem.produto_id_api,
+            produto_id: apiItem.produto_id,
             preco: apiItem.total_item_pedido || 0,
             nome_produto: apiItem.nome_produto || 'Item Desconhecido',
             tipo_tamanho: apiItem.tipo_tamanho_pedido,
@@ -246,7 +246,7 @@ const CarrinhoScreen = () => {
 
     setItemLoading(prev => ({...prev, [grupo.key]: true}));
     try {
-      const url = `${API_DELETAR_ITEM_PEDIDO_URL}?id_item_pedido=${idItemPedidoParaRemover}`;
+      const url = `${API_DELETAR_ITEM_PEDIDO_URL}?pedido_id=${idItemPedidoParaRemover}`;
       const res = await axios.delete(url);
       if (res.data.success) {
         await fetchCarrinhoData();
@@ -271,8 +271,7 @@ const CarrinhoScreen = () => {
     nome_produto_do_grupo: string,
   ) => {
     if (!user?.id) {
-      Alert.alert('Erro', 'Login necessário.');
-      return;
+      /* ... */ return;
     }
     Alert.alert(
       'Remover Todos?',
@@ -286,8 +285,18 @@ const CarrinhoScreen = () => {
             setDeletingAllType(produto_id_do_grupo);
             try {
               const url = `${API_DELETAR_ITENS_POR_PRODUTO_URL}?cliente_id=${user.id}&produto_id=${produto_id_do_grupo}`;
-              const res = await axios.delete(url);
+              console.log('Chamando API (com GET) para deletar tipo:', url);
+
+              // ***** MUDANÇA AQUI *****
+              const res = await axios.get(url); // Mudar de axios.delete para axios.get
+
+              console.log('Resposta da API (deletar tipo):', res.data);
               if (res.data.success) {
+                Alert.alert(
+                  'Sucesso',
+                  res.data.message ||
+                    `Todos os itens de "${nome_produto_do_grupo}" foram removidos.`,
+                );
                 await fetchCarrinhoData();
               } else {
                 Alert.alert(
@@ -296,11 +305,18 @@ const CarrinhoScreen = () => {
                 );
               }
             } catch (err: any) {
-              Alert.alert(
-                'Erro de Rede',
-                err.response?.data?.message ||
-                  'Não foi possível remover os itens.',
-              );
+              console.error('Erro de rede ao deletar tipo:', err);
+              let errorMessage = 'Não foi possível remover os itens.';
+              if (
+                err.response &&
+                err.response.data &&
+                err.response.data.message
+              ) {
+                errorMessage = err.response.data.message;
+              } else if (err.message) {
+                errorMessage = err.message;
+              }
+              Alert.alert('Erro de Rede', errorMessage);
             } finally {
               setDeletingAllType(null);
             }

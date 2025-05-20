@@ -8,13 +8,13 @@ interface AddCarrinhoProps {
 }
 
 export interface CarrinhoItem {
-  id: number;
-  pizza_id: number;
-  preco: number;
-  nome_pizza: string;
-  tipo_pizza: string;
-  cliente_id?: number;
-  caminho_imagem?: string;
+  id: number; // id_item_pedido
+  produto_id: number; // produto_id_api (o ID do produto real)
+  preco: number; // total_item_pedido
+  nome_produto: string; // nome_produto
+  tipo_tamanho: string | null; // tipo_tamanho_pedido
+  tamanho: string | null; // tamanho_pedido
+  caminho_imagem?: string; // caminho_imagem_produto
 }
 
 export interface CarrinhoItem {

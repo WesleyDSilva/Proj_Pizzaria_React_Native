@@ -26,7 +26,7 @@ export default function Favoritos() {
       cliente_id: number;
       id_pizza: number;
       nome_pizza: any;
-      preco_total: string;
+
       imagem: any;
     }[]
   >([]); // Aqui é onde você especifica o tipo do estado de favorit
@@ -36,7 +36,7 @@ export default function Favoritos() {
       cliente_id: number;
       id_pizza: number;
       nome_pizza: any;
-      preco_total: string;
+
       imagem: any;
     }[]
   >([]); // Aqui também especifica o tipo de `filteredFavoritos`
@@ -58,7 +58,7 @@ export default function Favoritos() {
     setError(null);
     try {
       const response = await axios.get(
-        `https://devweb3.ok.etc.br/api/api_get_pedidos_favoritos.php?cliente_id=${user.id}`,
+        `https://devweb3.ok.etc.br/api_mobile/api_get_pedidos_favoritos.php?cliente_id=${user.id}`,
       );
       if (Array.isArray(response.data)) {
         const favoritosFormatados = response.data.map(fav => ({
@@ -66,9 +66,7 @@ export default function Favoritos() {
           cliente_id: Number(fav.cliente_id),
           id_pizza: Number(fav.id_pizza),
           nome_pizza: fav.nome_pizza || 'Pizza Favorita',
-          preco_total: fav.preco_total
-            ? parseFloat(fav.preco_total).toFixed(2)
-            : '0.00',
+
           imagem: fav.imagem || DEFAULT_IMAGE_URL,
         }));
         setFavoritos(favoritosFormatados);
@@ -179,8 +177,6 @@ export default function Favoritos() {
           numColumns={2}
           contentContainerStyle={styles.multiItemContentContainer}
           renderItem={({item}) => {
-            const precoExibicao = `R$ ${item.preco_total}`;
-
             return (
               <View style={styles.itemContainer}>
                 <View style={styles.pizzaImageContainer}>
@@ -195,7 +191,6 @@ export default function Favoritos() {
                   <Text style={styles.pizzaName} numberOfLines={2}>
                     {item.nome_pizza}
                   </Text>
-                  <Text style={styles.pizzaPrice}>{precoExibicao}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => removerFavorito(item.id_pizza)}

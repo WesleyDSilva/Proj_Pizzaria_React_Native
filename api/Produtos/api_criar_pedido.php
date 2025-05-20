@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // --- Use the correct path to your config file ---
-require_once __DIR__ . '/db_settings.php'; // Corrected based on previous info
+require_once __DIR__ . '/banco_connect.php'; // Corrected based on previous info
 
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

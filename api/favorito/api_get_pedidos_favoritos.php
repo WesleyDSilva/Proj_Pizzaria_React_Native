@@ -1,100 +1,120 @@
 <?php
+// Configurações para exibir todos os erros (útil para depuração)
+ini_set('display_errors', 1); // Mostra erros na tela (cuidado em produção)
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+ini_set('log_errors', 1); // Habilita log de erros
+ini_set('error_log', '/path/to/your/php-error.log'); // <<< IMPORTANTE: Defina um caminho VÁLIDO >>>
+
+// Definir o cabeçalho como JSON e especificar UTF-8
+header('Content-Type: application/json; charset=utf-8');
+
 // Configuração do banco de dados
-$host = 'wesley.mysql.dbaas.com.br'; // Endereço do servidor do banco de dados
-$dbname = 'wesley'; // Nome do banco de dados
-$username = 'wesley'; // Nome de usuário do banco de dados
-$password = 'tI7u96pYDAv3I#'; // Senha do banco de dados
+$host = 'wesley.mysql.dbaas.com.br';
+$dbname = 'wesley';
+$username = 'wesley';
+$password = 'tI7u96pYDAv3I#';
 
 // Conexão com o banco de dados usando mysqli
 $conexao = mysqli_connect($host, $username, $password, $dbname);
 if (!$conexao) {
+    http_response_code(500);
+    error_log("Erro de conexão mysqli: " . mysqli_connect_error());
     echo json_encode(array(
         'error' => true,
-        'message' => 'Erro de conexão: ' . mysqli_connect_error()
+        'message' => 'Erro interno do servidor (conexão DB).'
     ));
     exit;
 }
 
-mysqli_set_charset($conexao, "utf8"); // Configurar o charset para UTF-8
+mysqli_set_charset($conexao, "utf8");
 
-// Verificando o método da requisição
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Obtendo o ID do cliente
-    $cliente_id = isset($_GET['cliente_id']) ? intval($_GET['cliente_id']) : null;
 
-    // Validando se o cliente_id foi fornecido
-    if ($cliente_id) {
-        // Montando a query SQL para selecionar os pedidos favoritos do cliente com dados das pizzas
-        $query = "SELECT 
-                    pedidos_favoritos.id AS id_favorito,
-                    pedidos_favoritos.cliente_id,
-                    pizzas.id AS id_pizza,
-                    pizzas.nome AS nome_pizza,
-                    pizzas.descricao AS ingredientes,
-                    pizzas.preco AS preco_unitario,
-                    pedidos_favoritos.preco AS preco_total,
-                    pizzas.caminho AS imagem
-                  FROM pedidos_favoritos
-                  JOIN pizzas ON pedidos_favoritos.pizza_id = pizzas.id
-                  WHERE pedidos_favoritos.cliente_id = ?";
-
-        $stmt = mysqli_prepare($conexao, $query);
-
-        if ($stmt) {
-            // Associando o parâmetro
-            mysqli_stmt_bind_param($stmt, "i", $cliente_id);
-
-            // Executando a query
-            mysqli_stmt_execute($stmt);
-
-            // Associando as variáveis para os resultados
-            mysqli_stmt_bind_result(
-                $stmt,
-                $id_favorito,
-                $cliente_id_result,
-                $id_pizza,
-                $nome_pizza,
-                $ingredientes,
-                $preco_unitario,
-                $preco_total,
-                $imagem
-            );
-
-            $favoritos = array();
-
-            // Buscando os resultados
-            while (mysqli_stmt_fetch($stmt)) {
-                $favoritos[] = array(
-                    'id_favorito' => $id_favorito,
-                    'cliente_id' => $cliente_id_result,
-                    'id_pizza' => $id_pizza,
-                    'nome_pizza' => $nome_pizza,
-                    'ingredientes' => $ingredientes,
-                    'preco_unitario' => $preco_unitario,
-                    'preco_total' => $preco_total,
-                    'imagem' => $imagem
-                );
-            }
-
-            // Se encontrou favoritos, retorna apenas os dados
-            if (!empty($favoritos)) {
-                echo json_encode($favoritos);
-            } else {
-                echo json_encode(array()); // Retorna um array vazio caso não haja favoritos
-            }
-
-            // Fechando a declaração preparada
-            mysqli_stmt_close($stmt);
-        } else {
-            echo json_encode(array());
-        }
-    } else {
-        echo json_encode(array()); // Retorna array vazio caso não tenha 'cliente_id'
+    if (!isset($_GET['cliente_id']) || !is_numeric($_GET['cliente_id'])) {
+        http_response_code(400);
+        echo json_encode(array(
+            'error' => true,
+            'message' => 'Parâmetro cliente_id ausente ou inválido.'
+        ));
+        mysqli_close($conexao);
+        exit;
     }
+    $cliente_id = intval($_GET['cliente_id']);
+    error_log("API chamada para cliente_id: " . $cliente_id);
+
+    // ***** QUERY CORRIGIDA PARA USAR p.produto_id *****
+    $query = "SELECT
+                pf.id AS id_favorito,
+                pf.cliente_id,
+                p.produto_id AS id_pizza,      -- <<< CORRIGIDO AQUI
+                p.nome AS nome_pizza,
+                p.ingredientes AS ingredientes,
+                p.caminho AS imagem
+              FROM pedidos_favoritos pf
+              JOIN Produtos p ON pf.pizza_id = p.produto_id -- <<< CORRIGIDO AQUI
+              WHERE pf.cliente_id = ?";
+
+    $stmt = mysqli_prepare($conexao, $query);
+
+    if ($stmt) {
+        if (!mysqli_stmt_bind_param($stmt, "i", $cliente_id)) {
+            http_response_code(500);
+            error_log("Erro ao vincular parâmetro: " . mysqli_stmt_error($stmt));
+            echo json_encode(array('error' => true, 'message' => 'Erro interno do servidor (bind param).'));
+            mysqli_stmt_close($stmt);
+            mysqli_close($conexao);
+            exit;
+        }
+
+        if (!mysqli_stmt_execute($stmt)) {
+            http_response_code(500);
+            error_log("Erro ao executar statement: " . mysqli_stmt_error($stmt));
+            echo json_encode(array('error' => true, 'message' => 'Erro interno do servidor (execute).'));
+            mysqli_stmt_close($stmt);
+            mysqli_close($conexao);
+            exit;
+        }
+
+        // Vincular variáveis (a ordem e quantidade devem corresponder ao SELECT)
+        mysqli_stmt_bind_result(
+            $stmt,
+            $id_favorito,
+            $cliente_id_result,
+            $id_pizza, // Receberá o valor de p.produto_id
+            $nome_pizza,
+            $ingredientes,
+
+            $imagem
+        );
+
+        $favoritos = array();
+        while (mysqli_stmt_fetch($stmt)) {
+            $favoritos[] = array(
+                'id_favorito' => $id_favorito,
+                'cliente_id' => $cliente_id_result,
+                'id_pizza' => $id_pizza, // ID do produto
+                'nome_pizza' => $nome_pizza,
+                'ingredientes' => $ingredientes,
+
+                'imagem' => $imagem
+            );
+        }
+
+        error_log("Número de favoritos encontrados para cliente_id " . $cliente_id . ": " . count($favoritos));
+        echo json_encode($favoritos);
+        mysqli_stmt_close($stmt);
+
+    } else {
+        http_response_code(500);
+        error_log("Erro ao preparar statement: " . mysqli_error($conexao));
+        echo json_encode(array('error' => true, 'message' => 'Erro interno do servidor (prepare statement).'));
+    }
+
 } else {
-    echo json_encode(array()); // Retorna array vazio para método inválido
+    http_response_code(405);
+    echo json_encode(array('error' => true, 'message' => 'Método não permitido. Use GET.'));
 }
 
-// Fechando a conexão com o banco de dados
 mysqli_close($conexao);
 ?>
