@@ -1,135 +1,73 @@
+// src/pages/Bottom_Tabs/index.tsx
 import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {View} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
-import {CarrinhoProvider} from '../../contexts/CarrinhoContext';
+// import {CarrinhoProvider} from '../../contexts/CarrinhoContext'; // Removido para simplificar, coloque no nível do App
 
 import Feed from '../Feed';
 import Carrinho from '../Carrinho';
 import Profile from '../Profile';
 import Favoritos from '../Favoritos';
-import Pedidos from '../Pedidos';
-const Tab = createBottomTabNavigator();
+import PedidosScreen from '../Pedidos'; // Importando o PedidosScreen unificado
+
+import {BottomTabParamList} from '../../types/navigation'; // Importando o tipo para as abas
+
+const Tab = createBottomTabNavigator<BottomTabParamList>(); // Usando o tipo
 
 export default function Bottom_Tabs(): React.JSX.Element {
   return (
     <Tab.Navigator
-      /*screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#000', // Cor do ícone ativo
-        tabBarInactiveTintColor: '#F38D00', // Cor do ícone inativo
-        tabBarStyle: {
-          backgroundColor: '#F38D00', // Cor de fundo da barra
-          
-        },*/
-
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false, // Remove os rótulos para liberar espaço
+        tabBarShowLabel: false,
         tabBarActiveTintColor: '#000',
         tabBarInactiveTintColor: '#F38D00',
         tabBarStyle: {backgroundColor: '#F38D00'},
       }}>
+      <Tab.Screen name="feed" component={Feed} /* ... options ... */ />
+      <Tab.Screen name="carrinho" component={Carrinho} /* ... options ... */ />
       <Tab.Screen
-        name="feed"
-        component={Feed}
+        name="pedidos" // Esta aba agora usa o PedidosScreen unificado
+        component={PedidosScreen}
         options={{
           tabBarIcon: ({color, size}) => (
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: 25,
-                padding: 5,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-              <Icon name="home" color={color} size={size} />
-            </View>
-          ),
-          tabBarLabel: '',
-        }}
-      />
-
-      <Tab.Screen
-        name="carrinho"
-        component={Carrinho}
-        options={{
-          tabBarIcon: ({color, size}) => (
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: 25,
-                padding: 5,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-              <Icon name="shopping-cart" color={color} size={size} />
-            </View>
-          ),
-          tabBarLabel: '',
-        }}
-      />
-
-      <Tab.Screen
-        name="pedidos"
-        component={Pedidos}
-        options={{
-          tabBarIcon: ({color, size}) => (
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: 25,
-                padding: 5,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
+            <View style={styles.iconContainer}>
               <Icon name="shopping-bag" color={color} size={size} />
             </View>
           ),
-          tabBarLabel: '',
         }}
       />
-
+      <Tab.Screen name="user" component={Profile} /* ... options ... */ />
       <Tab.Screen
-        name="user"
-        component={Profile}
-        options={{
-          tabBarIcon: ({color, size}) => (
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: 25,
-                padding: 5,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-              <Icon name="user" color={color} size={size} />
-            </View>
-          ),
-          tabBarLabel: '',
-        }}
-      />
-
-      <Tab.Screen
-        name="new"
+        name="favoritos" // Renomeado de 'new'
         component={Favoritos}
         options={{
           tabBarIcon: ({color, size}) => (
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderRadius: 25,
-                padding: 5,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
+            <View style={styles.iconContainer}>
               <Icon name="heart" color={color} size={size} />
             </View>
           ),
-          tabBarLabel: '',
         }}
       />
     </Tab.Navigator>
   );
 }
+
+// Estilos para os ícones das abas
+const styles = StyleSheet.create({
+  iconContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+  },
+});
