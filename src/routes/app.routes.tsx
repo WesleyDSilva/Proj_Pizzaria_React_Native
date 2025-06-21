@@ -1,15 +1,16 @@
+// src/routes/app.routes.tsx
 import React from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../types/navigation'; // Importar
 
 import Dashboard from '../pages/Dashboard';
-import Cadastro from '../pages/Cadastro'; // Importa corretamente a tela Cadastro
-import SignIn from '../pages/SignIn';
-import Bottom_Tabs from '../pages/Bottom_Tabs/intex';
-import Order from '../pages/Cadastro/Order';
-import Pedidos from '../pages/Pedidos';
-import Detalhes from '../pages/Pedidos/Detalhes';
+//import OrderScreen from '../pages/Order';
 
-const Stack = createNativeStackNavigator();
+import PedidosScreen from '../pages/Pedidos'; // Este é o PedidosScreen unificado
+
+// import BottomTabsNavigator from '../pages/Bottom_Tabs'; // Se AppTabs estiver aqui
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function AppRoutes() {
   return (
@@ -19,17 +20,30 @@ function AppRoutes() {
         component={Dashboard}
         options={{headerShown: false}}
       />
-
-      <Stack.Screen
+      {/*<Stack.Screen
         name="Order"
-        component={Order}
+        //component={OrderScreen}
         options={{headerShown: false}}
+      />*/}
+      <Stack.Screen
+        name="Pedidos"
+        component={PedidosScreen}
+        options={{title: 'Meus Pedidos'}}
       />
-
-      <Stack.Screen name="Pedidos" component={Pedidos} />
-      <Stack.Screen name="Detalhes" component={Detalhes} />
+      {/* A rota DetalhesDoPedido foi removida pois sua funcionalidade está em PedidosScreen */}
+      {/* <Stack.Screen
+        name="Detalhes"
+        component={DetalhesScreen}
+        options={{title: 'Detalhes'}}
+      />*/}
+      {/*
+      <Stack.Screen
+        name="AppTabs" // Nome da rota para o navegador de abas
+        component={BottomTabsNavigator}
+        options={{ headerShown: false }}
+      />
+      */}
     </Stack.Navigator>
   );
 }
-
 export default AppRoutes;
